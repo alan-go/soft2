@@ -13,6 +13,8 @@ enum FeatureType
 	BlobMin = 11,		BlobMax = 12,
 	CornerMin = 21,		CornerMax = 22
 };
+
+typedef Matrix<int16_t,24,1> VecDescriptor;
 class FeaturePoint
 {
 public:
@@ -37,7 +39,7 @@ struct Point{
 	double u,v;
 	double strength;
 	FeatureType type;
-	int16_t descriptor[24];
+	VecDescriptor descriptor;
 
 	Point(){}
 	Point(double u,double v,double strength,FeatureType type):
@@ -97,7 +99,7 @@ private:
 	int nmsThreshold;
 	int margin;
 	FrameData dataCurrent,dataPrevious;
-	SE3 tPrevious2Current( Quaterniond(1,0,0,0));
+	//SE3 tPrevious2Current( Quaterniond(1,0,0,0));
 
 	int binScale;
 	int binWidth,binHeight;

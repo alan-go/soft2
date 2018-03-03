@@ -80,6 +80,17 @@ FrameData FeaturePointBox::FilterImage(Mat leftImage, Mat rigtImage )
 
 bool FeaturePointBox::ExtractFPointsFromImage ( Mat leftImage, Mat rigtImage )
 {
+	//for test
+	VecDescriptor des1 ;
+	VecDescriptor des2 ;
+
+	des1<<0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;
+	des2<<0,2,0,2,0,0,6,0,0,0,0,0,0,0,0,0,0,0,0,0,21,22,23,15;
+	cout<<"e-des1 = "<<des1<<endl;
+	cout<<"e-des2 = "<<des2<<endl;
+	cout<<"e-des1-2 = "<<des1-des2<<endl;
+
+	//####################
 	dataPrevious = dataCurrent;
 
 	dataCurrent = FilterImage(leftImage,rigtImage);
@@ -125,7 +136,7 @@ bool FeaturePointBox::ExtractFPointsFromImage ( Mat leftImage, Mat rigtImage )
 
 }
 
-bool FeaturePointBox::FeatureProcess (  )
+bool FeaturePointBox::FeatureProcess ( int frameNumber )
 {
 	if(ranges.size()==4){	CacuRanges(false);}
 	else{CacuRanges(true);}
@@ -206,6 +217,8 @@ Point FeaturePointBox::Match ( Point point1, vector< Point > points2, vector< Ra
 	int binv = ceil(v1/binScale);
 	int binInd = binWidth*(binv-1)+binu-1;
 	Range rangeTemp = range[binInd];
+
+
 
 }
 
