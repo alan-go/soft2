@@ -35,7 +35,7 @@ public:
 };
 struct Point {
     int id;
-    double u,v;
+    float u,v;
     double strength;
     FeatureType type;
     VecDescriptor descriptor;
@@ -107,6 +107,8 @@ private:
 	int serchWindowDense;
     vector<vector<Range>> rangesAll;
 public:
+	cv::Point2d pp_;
+	double focal_;
     vector<FeaturePoint> fPointsAll;
 
     vector<MatchFeatures> matchFast;
@@ -127,14 +129,15 @@ private:
     void InitRangesForFastMatch ( bool isBegin );
     bool MatchLoop ( bool isDense );
     int Match ( Point &point1,Point &point2, vector< Point > &points2,vector<Range> &range );
-	void UpdateRanges(Vector<MatchFeatures> &matches);
+	void UpdateRanges(vector<MatchFeatures> &matches);
+	void CacuTransfer5pRansac(vector<MatchFeatures> &matches);
 
 public:
     FeaturePointBox ( System* pt );
     ~FeaturePointBox();
 
     bool FeatureProcess ( int frameNumber );
-    bool ExtractFPointsFromImage (const cv::Mat &leftImage,const cv::Mat &rigtImage );
+    bool ExtractFPointsFromImage ( cv::Mat &leftImage, cv::Mat &rigtImage );
 };
 
 }

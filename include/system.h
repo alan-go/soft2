@@ -45,7 +45,7 @@ public:
 
     void init();
 
-    cv::Mat TrackStereo ( const cv::Mat &imLeft, const cv::Mat &imRight, const double &timestamp );
+    void TrackStereo (  cv::Mat &imLeft,  cv::Mat &imRight,  double &timestamp );
 };
 
 }

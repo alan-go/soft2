@@ -47,8 +47,8 @@ int main(int argc, char **argv)
 
         std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
 
- 		cv::imshow("left",imLeft);
-		cv::waitKey(10);
+		cv::imshow("left",imLeft);
+		cv::waitKey(200);
         // Pass the images to the SLAM system
         SLAM.TrackStereo ( imLeft,imRight,tframe );
         std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();

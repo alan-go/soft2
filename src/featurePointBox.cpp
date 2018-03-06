@@ -21,6 +21,8 @@ FeaturePointBox::FeaturePointBox ( System* pt ) :
     serchWindowFast = 20;
     serchWindowDense = 5;
     matchSADThreshold = 100000;
+	focal_=systemPtr->camera.fx_;
+	pp_=cv::Point2d(systemPtr->camera.cx_,systemPtr->camera.cy_);
 }
 FeaturePointBox::~FeaturePointBox()
 {
@@ -81,20 +83,8 @@ FrameData FeaturePointBox::FilterImage ( Mat leftImage, Mat rigtImage )
 }
 
 
-bool FeaturePointBox::ExtractFPointsFromImage ( const Mat &leftImage,const Mat &rigtImage )
+bool FeaturePointBox::ExtractFPointsFromImage (  Mat &leftImage, Mat &rigtImage )
 {
-    //for test
-    VecDescriptor des1 ;
-    VecDescriptor des2 ;
-
-    des1<<0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0;
-    des2<<0,2,0,2,0,0,6,0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,3,5;
-    cout<<"e-des1 = "<<des1<<endl;
-    cout<<"e-des2 = "<<des2<<endl;
-    cout<<"e-des1-2 = "<<des1-des2<<endl;
-    int SAD = des2.lpNorm<1>();
-    cout<<"SAD"<<SAD;
-    //####################
     dataPrevious = dataCurrent;
 
     dataCurrent = FilterImage ( leftImage,rigtImage );
@@ -226,8 +216,29 @@ bool FeaturePointBox::MatchLoop ( bool isDense )
         return false;
     }
 }
+//matches 分四类没写？
+void FeaturePointBox::CacuTransfer5pRansac ( vector< MatchFeatures >& matches )
+{
+	cv::Mat E, R, t, mask;
+	vector<vector<cv::Point2f> > cvPoint ( 4,vector<cv::Point2f> ( matches.size() ) );
+	//ddvector<cv::Point2f> pointsCurrentLeft,pointsCurretRight,pointsPreviousLeft,pointsPreviousRight;
+	for(int n =0;n<matches.size();n++)
+	{
+			for(int ind =0;ind<4;ind++)
+			{
+				cvPoint[ind][n].x=matches[n].point[ind].u;
+				cvPoint[ind][n].y=matches[n].point[ind].v;
+			}
+	}
 
-void FeaturePointBox::UpdateRanges ( Vector< MatchFeatures >& matches )
+	double focal_ = systemPtr->camera.fx_;
+	E = cv::findEssentialMat(cvPoint[1], cvPoint[0], focal_, pp_, cv::RANSAC, 0.999, 1.0, mask);
+	cv::recoverPose(E, cvPoint[1], cvPoint[0], R, t, focal_, pp_, mask);
+
+	
+}
+
+void FeaturePointBox::UpdateRanges ( vector< MatchFeatures >& matches )
 {
     for ( int ind=0; ind<matches.size(); ind++ ) {
         MatchFeatures match = matches[ind];
