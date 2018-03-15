@@ -11,7 +11,7 @@ class Camera
 {
 public:
     typedef std::shared_ptr<Camera> Ptr;
-    float   fx_, fy_, cx_, cy_, depth_scale_;
+    float   fx_, fy_, cx_, cy_, base, depth_scale_;
 
     Camera();
     Camera ( float fx, float fy, float cx, float cy, float depth_scale=0 ) :

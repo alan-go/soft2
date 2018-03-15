@@ -39,7 +39,11 @@ void System::TrackStereo (  cv::Mat &imLeft,  cv::Mat &imRight,  double& timesta
     fPointBox->ExtractFPointsFromImage ( imLeft,imRight );
     if ( frameNumber > 0 ) {
         fPointBox->FeatureProcess ( frameNumber );
+
+		SOFT::Frame* nextFrame = new Frame(this,fPointBox);
+
     }
+
 
 
     frameNumber++;

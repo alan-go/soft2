@@ -10,7 +10,8 @@ Camera::Camera()
     fx_ = Config::get<float>("Camera.fx");
     fy_ = Config::get<float>("Camera.fy");
     cx_ = Config::get<float>("Camera.cx");
-    cy_ = Config::get<float>("Camera.cy");
+	cy_ = Config::get<float>("Camera.cy");
+	base = Config::get<float>("Camera.base");
     //depth_scale_ = Config::get<float>("camera.depth_scale");
 }
 

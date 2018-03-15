@@ -17,6 +17,8 @@ class Mapping
 
 public:
   typedef std::shared_ptr<Mapping> Ptr;
+  vector<Frame*> allFrames;
+  vector<Frame*> keyFrames;
  // std::unordered_map<unsigned long, Frame::Ptr> frames;
   //std::unordered_map<unsigned long, Frame::Ptr> keyFrames;
   

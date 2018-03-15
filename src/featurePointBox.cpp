@@ -1,6 +1,7 @@
 #include "common_include.h"
 #include "featurePointBox.h"
 #include "system.h"
+using namespace Eigen;
 
 namespace SOFT
 {
@@ -21,8 +22,11 @@ FeaturePointBox::FeaturePointBox ( System* pt ) :
     serchWindowFast = 20;
     serchWindowDense = 5;
     matchSADThreshold = 100000;
-	focal_=systemPtr->camera.fx_;
-	pp_=cv::Point2d(systemPtr->camera.cx_,systemPtr->camera.cy_);
+    focal_=systemPtr->camera.fx_;
+    pp_=cv::Point2d ( systemPtr->camera.cx_,systemPtr->camera.cy_ );
+    tPrevious2Current = SE3( );
+    tEigen = Vector3d ( 0,0,0 );
+    ransacIter = 200;
 }
 FeaturePointBox::~FeaturePointBox()
 {
@@ -83,7 +87,7 @@ FrameData FeaturePointBox::FilterImage ( Mat leftImage, Mat rigtImage )
 }
 
 
-bool FeaturePointBox::ExtractFPointsFromImage (  Mat &leftImage, Mat &rigtImage )
+bool FeaturePointBox::ExtractFPointsFromImage ( Mat &leftImage, Mat &rigtImage )
 {
     dataPrevious = dataCurrent;
 
@@ -137,8 +141,7 @@ bool FeaturePointBox::FeatureProcess ( int frameNumber )
     MatchLoop ( true );
 
     //refine
-
-    //cacu transfer
+    CacuTransfer5pRansac ( matchDense );
     return true;
 }
 
@@ -158,7 +161,7 @@ void FeaturePointBox::InitRangesForFastMatch ( bool isBegin )
                         vmin=0;
                         vmax=0;
                     }
-                    rangesAll[i][n]= Range(umin,umax,vmin,vmax);
+                    rangesAll[i][n]= Range ( umin,umax,vmin,vmax );
                 }
             }
         }
@@ -216,26 +219,176 @@ bool FeaturePointBox::MatchLoop ( bool isDense )
         return false;
     }
 }
+
+double FeaturePointBox::CacuReprojectError ( MatchFeatures match, SE3 transform )
+{
+	float cu = systemPtr->camera.cx_;
+	float cv = systemPtr->camera.cy_;
+	float base = systemPtr->camera.base;
+	float uLp = match.point[0].u;
+	float vLp = match.point[0].v;
+	float uRp = match.point[3].u;
+	float vRp = match.point[3].v;
+
+    double d = max ( uLp - uRp,0.0001f );
+    double x = ( uLp-cu ) *base/d;
+    double y = ( vLp-cv ) *base/d;
+    double z = focal_*base/d;
+    Vector3d point3D ( x,y,z );
+
+	SOFT::Point pLObserve = match.point[1];
+	SOFT::Point pRObserve = match.point[2];
+	Vector2d pLPredict = systemPtr->camera.world2pixel(point3D,transform);
+	Vector2d pRPredict = systemPtr->camera.world2pixel(point3D-Vector3d(base,0,0),transform);
+
+	Vector4d resV(pLObserve.u-pLPredict(0),pLObserve.v-pLPredict(1),pRObserve.u-pRPredict(0),pRObserve.v-pRPredict(1));
+
+	return resV.lpNorm<1>();
+}
+
 //matches 分四类没写？
 void FeaturePointBox::CacuTransfer5pRansac ( vector< MatchFeatures >& matches )
 {
-	cv::Mat E, R, t, mask;
-	vector<vector<cv::Point2f> > cvPoint ( 4,vector<cv::Point2f> ( matches.size() ) );
-	//ddvector<cv::Point2f> pointsCurrentLeft,pointsCurretRight,pointsPreviousLeft,pointsPreviousRight;
-	for(int n =0;n<matches.size();n++)
-	{
-			for(int ind =0;ind<4;ind++)
-			{
-				cvPoint[ind][n].x=matches[n].point[ind].u;
-				cvPoint[ind][n].y=matches[n].point[ind].v;
-			}
-	}
+    cv::Mat E, R, t, mask;
+    vector<vector<cv::Point2f> > cvPoint ( 4,vector<cv::Point2f> ( matches.size() ) );
+    printf ( "matchd size = %d",matchDense.size() );
+    printf ( "matchf size = %d\n",matchFast.size() );
 
-	double focal_ = systemPtr->camera.fx_;
-	E = cv::findEssentialMat(cvPoint[1], cvPoint[0], focal_, pp_, cv::RANSAC, 0.999, 1.0, mask);
-	cv::recoverPose(E, cvPoint[1], cvPoint[0], R, t, focal_, pp_, mask);
+    for ( int n =0; n<matches.size(); n++ ) {
+        for ( int ind =0; ind<4; ind++ ) {
+            cvPoint[ind][n].x=matches[n].point[ind].u;
+            cvPoint[ind][n].y=matches[n].point[ind].v;
+// 				printf("u=%f,%f,v=%f,%f\n",matches[n].point[ind].u,cvPoint[ind][n].x,matches[n].point[ind].v,cvPoint[ind][n].y);
 
-	
+        }
+    }
+
+
+
+    double focal_ = systemPtr->camera.fx_;
+    vector<cv::Point2f> px_cur_,px_ref_;
+    px_cur_= cvPoint[1];
+    px_ref_ = cvPoint[0];
+
+// 	//**********//
+// 	for(int i =0;i<px_cur_.size();i++)
+// 	{
+// 		printf("x=%f,y=%f\t",px_ref_[i].x,px_ref_[i].y);
+// 		printf("x=%f,y=%f\t",px_cur_[i].x,px_cur_[i].y);
+// 		printf("x=%f,y=%f\t",cvPoint[2][i].x,cvPoint[2][i].y);
+// 		printf("x=%f,y=%f\n",cvPoint[3][i].x,cvPoint[3][i].y);
+// 	}
+// 	//**********//
+//
+    E = cv::findEssentialMat ( px_cur_, px_ref_, focal_, pp_, cv::RANSAC, 0.999, 1.0,mask );
+    cv::recoverPose ( E, px_cur_, px_ref_, R, t, focal_, pp_,mask );
+    cv::cv2eigen ( R,R_Eigen );
+
+//***********//
+
+
+//
+// printf("%f,%f,%f\n%f,%f,%f\n%f,%f,%f\n\n",E.at<double>(0,0),E.at<double>(0,1),E.at<double>(0,2),E.at<double>(1,0),E.at<double>(1,1),E.at<double>(1,2),
+// E . at <
+// double>(2,0),E.at<double>(2,1),E.at<double>(2,2));
+//
+// printf("%f,%f,%f\n%f,%f,%f\n%f,%f,%f\n\n",R.at<double>(0,0),
+// 	   R.at<double>(0,1),R.at<double>(0,2),R.at<double>(1,0),R.at<double>(1,1),R.at<double>(1,2),R.at<
+// double>(2,0),R.at<double>(2,1),R.at<double>(2,2));
+
+// printf("%f,%f,%f\n",t.at<double>(0,0), t.at<double>(0,1),t.at<double>(0,2));
+
+    std::cout<<R_Eigen<<endl;
+    std::cout<<tEigen<<endl;
+
+//***********//
+
+// project matches of previous image into 3d
+    vector<Vector3d> points3D;
+    float cu = systemPtr->camera.cx_;
+    float cv = systemPtr->camera.cy_;
+    float base = systemPtr->camera.base;
+    for ( int n =0; n<matches.size(); n++ ) {
+        float uLp = matches[n].point[0].u;
+        float vLp = matches[n].point[0].v;
+        float uRp = matches[n].point[3].u;
+        float vRp = matches[n].point[3].v;
+
+        double d = max ( uLp - uRp,0.0001f );
+        double x = ( uLp-cu ) *base/d;
+        double y = ( vLp-cv ) *base/d;
+        double z = focal_*base/d;
+        Vector3d point3D ( x,y,z );
+        points3D.push_back ( point3D );
+    }
+//1 point RANSAC
+    int inlinNumber = 0;
+    int bestIndex = 0;
+    static std::default_random_engine e ( 0 );
+    static std::uniform_int_distribution<int> u ( 0, points3D.size() );
+
+	Vector3d tTemp = tEigen;
+    for ( int i =0; i<ransacIter; i++ ) {
+        int ind = u ( e );
+        Vector3d pointTemp = points3D[ind];
+		SOFT::Point pLObserve = matches[ind].point[1];
+		SOFT::Point pRObserve = matches[ind].point[2];
+        int inlineNumTemp = 0;
+        double res = 1000;
+		Vector3d tUpdate = tTemp;
+
+        Vector3d pL = R_Eigen*pointTemp;
+        double X=pL ( 0 ),Xr = pL ( 0 )-base,Y = pL ( 1 ),Z=pL ( 2 );
+        while ( res>1e-5 ) {
+            Matrix<double,3,4> Jacobian;
+			double Z_tz = Z+tUpdate ( 2 );
+            double Z_tz_2 = Z_tz*Z_tz;
+            Jacobian ( 0,0 ) =1/Z_tz;
+            Jacobian ( 0,1 ) =0;
+            Jacobian ( 0,2 ) =1/Z_tz;
+            Jacobian ( 0,3 ) =0;
+
+            Jacobian ( 1,0 ) =0;
+            Jacobian ( 1,1 ) =1/Z_tz;
+            Jacobian ( 1,2 ) =0;
+            Jacobian ( 1,2 ) =1/Z_tz;
+
+			Jacobian ( 2,0 ) =- ( X+tUpdate ( 0 ) ) /Z_tz_2;
+			Jacobian ( 2,0 ) =- ( Y+tUpdate ( 1 ) ) /Z_tz_2;
+			Jacobian ( 2,0 ) =- ( Xr+tUpdate ( 0 ) ) /Z_tz_2;
+			Jacobian ( 2,0 ) =- ( Y+tUpdate ( 1 ) ) /Z_tz_2;
+
+			Matrix3d A  = Jacobian*Jacobian.transpose();
+			std::cout<<"A="<<endl<<A<<endl<<endl;
+
+			Vector2d pLPredict = systemPtr->camera.world2pixel(pointTemp,SE3(R_Eigen,tUpdate));
+			Vector2d pRPredict = systemPtr->camera.world2pixel(pointTemp-Vector3d(base,0,0),SE3(R_Eigen,tUpdate));
+			Vector4d resV(pLObserve.u-pLPredict(0),pLObserve.v-pLPredict(1),pRObserve.u-pRPredict(0),pRObserve.v-pRPredict(1));
+			Vector3d b = Jacobian*resV;
+			Vector3d tOld = tUpdate;
+			std::cout<<"Ainverse="<<endl<<A.inverse()<<endl<<endl;
+			std::cout<<"resV="<<endl<<resV<<endl<<endl;
+
+			tUpdate = tUpdate+A.inverse()*b;
+			res = (tUpdate-tOld).lpNorm<1>();
+        }
+        tTemp = tUpdate;
+        double tx,ty,tz;
+        //tx= ;ty =
+        //gauss算出t
+
+// 	判断inliner个数
+        for ( int ind = 0; ind<matches.size(); ind++ ) {
+
+            if ( inlinNumber<inlineNumTemp ) {
+                inlinNumber=inlineNumTemp;
+                bestIndex = ind;
+            }
+        }
+    }
+
+
+
 }
 
 void FeaturePointBox::UpdateRanges ( vector< MatchFeatures >& matches )
@@ -292,7 +445,7 @@ int FeaturePointBox::Match ( Point &point1,Point &point2, vector< Point > &point
 
     for ( int i = 0; i<points2.size(); i++ ) {
         int u = points2[i].u,v = points2[i].v;
-        if ( u>=uleft&&u<=uright&&v>=vleft&&v<=vright ) {
+        if ( point1.type==points2[i].type && u>=uleft&&u<=uright&&v>=vleft&&v<=vright ) {
             vMinus = points2[i].descriptor-point1.descriptor;
             int SAD = vMinus.lpNorm<1>();
             if ( SAD<SADmin ) {

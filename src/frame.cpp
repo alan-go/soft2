@@ -14,10 +14,13 @@ Frame::~Frame()
 
 }
 
-
-Frame::Ptr Frame::createCurrentFrame ( FeaturePointBox* pt )
+Frame::Frame ( System* ptSys, FeaturePointBox* ptFBox )
 {
-    static long factory_id = 0;
+	PreviousFrame = ptSys->currentFrame;
+	ptSys->currentFrame->nextFrame = this;
+
+	T_c_p_ = ptFBox->tPrevious2Current;
+	T_c_w_ = T_c_p_ *( ptSys->currentFrame->T_c_w_);
 }
 
 

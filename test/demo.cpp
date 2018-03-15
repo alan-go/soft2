@@ -11,6 +11,18 @@ void LoadImages(const string &strPathToSequence, vector<string> &vstrImageLeft,
 
 int main(int argc, char **argv)
 {
+	//*************************//
+	 Eigen::Vector3d a,b,t;
+	Eigen::Matrix3d R;
+	R<<1,2,3,2,1,2,3,2,1;
+	a<<3,9,8;
+	t<<10,-3,7;
+	b=R.inverse()*a+t;
+	std::cout<<R<<endl<<endl;
+	std::cout<<a<<endl<<endl;
+	std::cout<<b<<endl<<endl;
+	//**************************//
+
     if(argc < 1)
     {
         cerr << endl << "Usage: ./stereo_kitti path_to_vocabulary path_to_settings path_to_sequence" << endl;

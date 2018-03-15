@@ -4,6 +4,7 @@
 #include "common_include.h"
 #include "system.h"
 using namespace Eigen;
+
 namespace SOFT
 {
 class System;
@@ -99,13 +100,13 @@ private:
     int margin;
     int matchSADThreshold;
     FrameData dataCurrent,dataPrevious;
-    //SE3 tPrevious2Current( Quaterniond(1,0,0,0));
 
     int binScale;
     int binWidth,binHeight,binNum;
     int serchWindowFast;
 	int serchWindowDense;
     vector<vector<Range>> rangesAll;
+	int ransacIter;
 public:
 	cv::Point2d pp_;
 	double focal_;
@@ -113,6 +114,9 @@ public:
 
     vector<MatchFeatures> matchFast;
     vector<MatchFeatures> matchDense;
+	SE3 tPrevious2Current;
+	Eigen::Matrix3d R_Eigen;
+	Vector3d tEigen;
 
 private:
     // computes the address offset for coordinates u,v of an image of given
@@ -130,6 +134,7 @@ private:
     bool MatchLoop ( bool isDense );
     int Match ( Point &point1,Point &point2, vector< Point > &points2,vector<Range> &range );
 	void UpdateRanges(vector<MatchFeatures> &matches);
+	double CacuReprojectError(MatchFeatures match,SE3 transform);
 	void CacuTransfer5pRansac(vector<MatchFeatures> &matches);
 
 public:

@@ -19,18 +19,20 @@ public:
     unsigned long                  id_;         // id of this frame
     double                         time_stamp_; // when it is recorded
     SE3                            T_c_w_;      // transform from world to camera
+    SE3                            T_c_p_;      // transform from PreviousFrame to current
     Camera::Ptr                    camera_;     // Pinhole RGBD Camera model
     std::vector<SOFT::FeaturePoint*> featurePoints;
     // std::vector<cv::KeyPoint>      keypoints_;  // key points in image
     // std::vector<MapPoint*>         map_points_; // associated map points
     bool                           is_key_frame_;  // whether a key-frame
 
+    Frame* nextFrame;
+	Frame* PreviousFrame;
+
 public: // data members
     Frame();
+	Frame(SOFT::System* ptSys,SOFT::FeaturePointBox* ptFBox);
     ~Frame();
-
-    static Frame::Ptr createCurrentFrame ( SOFT::FeaturePointBox* pt );
-
 
     // Get Camera Center
     Vector3d getCamCenter() const;
