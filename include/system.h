@@ -39,12 +39,13 @@ public:
     
     bool systemStop = false;
     
+	vector<Eigen::Matrix<double,3,4>> poses;
 public:
     System(int i);
     ~System ();
 
     void init();
-
+	void loadPoses(string str);
     void TrackStereo (  cv::Mat &imLeft,  cv::Mat &imRight,  double &timestamp );
 };
 

@@ -43,6 +43,21 @@ int main(int argc, char **argv)
     vTimesTrack.resize(nImages);
     
     SOFT::System SLAM(1);
+	SLAM.loadPoses(string(argv[1])+"/00.txt");
+	//##################
+	//draw 2d map from ground truth
+	Mat map2D(1000, 1000, CV_8UC3, cv::Scalar(0, 0, 0));
+	map2D=0;
+	for(int i=0;i<SLAM.poses.size();i++)
+	{
+		Matrix<double,3,4> a = SLAM.poses[i];
+		cout<<a(0,3)<<"\t"<<a(1,3)<<"\t"<<a(2,3)<<endl;
+		cv::Point pt(500+a(0,3),700-a(2,3));
+		cv::circle(map2D,pt,1,cv::Scalar(200, 0, 0));
+		cv::imshow("map",map2D);
+		cvWaitKey(1);
+	}
+	//##################
 
     cv::Mat imLeft, imRight;
     for ( int ni=0; ni<nImages; ni++ ) {

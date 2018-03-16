@@ -333,10 +333,10 @@ void FeaturePointBox::CacuTransfer5pRansac ( vector< MatchFeatures >& matches )
         Vector3d pointTemp = points3D[ind];
 		SOFT::Point pLObserve = matches[ind].point[1];
 		SOFT::Point pRObserve = matches[ind].point[2];
-        int inlineNumTemp = 0;
         double res = 1000;
 		Vector3d tUpdate = tTemp;
 
+		//gauss算出t
         Vector3d pL = R_Eigen*pointTemp;
         double X=pL ( 0 ),Xr = pL ( 0 )-base,Y = pL ( 1 ),Z=pL ( 2 );
         while ( res>1e-5 ) {
@@ -375,15 +375,25 @@ void FeaturePointBox::CacuTransfer5pRansac ( vector< MatchFeatures >& matches )
         tTemp = tUpdate;
         double tx,ty,tz;
         //tx= ;ty =
-        //gauss算出t
 
-// 	判断inliner个数
-        for ( int ind = 0; ind<matches.size(); ind++ ) {
-
-            if ( inlinNumber<inlineNumTemp ) {
-                inlinNumber=inlineNumTemp;
-                bestIndex = ind;
+		// 	判断inliner个数
+        int inlineNumTemp = 0;
+        SE3 transfer ( R_Eigen,tTemp );
+        for ( int indT = 0; indT<matches.size(); indT++ ) {
+            Vector2d pLPredict = systemPtr->camera.world2pixel ( points3D[indT],transfer );
+            Vector2d pRPredict = systemPtr->camera.world2pixel ( points3D[indT]-Vector3d ( base,0,0 ),transfer );
+            SOFT::Point pLObserve = matches[indT].point[1];
+            SOFT::Point pRObserve = matches[indT].point[2];
+            Vector4d resV ( pLObserve.u-pLPredict ( 0 ),pLObserve.v-pLPredict ( 1 ),pRObserve.u-pRPredict ( 0 ),pRObserve.v-pRPredict ( 1 ) );
+            double res = resV.lpNorm<1>();
+            if ( res<1e-4 ) {
+                inlineNumTemp++;
             }
+        }
+        if ( inlinNumber<inlineNumTemp ) {
+            inlinNumber=inlineNumTemp;
+            bestIndex = ind;
+			tEigen = tTemp;
         }
     }
 
