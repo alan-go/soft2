@@ -13,7 +13,6 @@ enum FeatureType {
     BlobMin = 11,		BlobMax = 12,
     CornerMin = 21,		CornerMax = 22
 };
-
 typedef Matrix<int16_t,24,1> VecDescriptor;
 class FeaturePoint
 {
@@ -97,6 +96,7 @@ private:
     int nmsNeighboursmall;
     int nmsNeighbourbig;
     int nmsThreshold;
+	double NCCThreshold;
     int margin;
     int matchSADThreshold;
     FrameData dataCurrent,dataPrevious;
@@ -107,6 +107,8 @@ private:
 	int serchWindowDense;
     vector<vector<Range>> rangesAll;
 	int ransacIter;
+	Mat map2D;//for test
+
 public:
 	cv::Point2d pp_;
 	double focal_;
@@ -136,6 +138,7 @@ private:
 	void UpdateRanges(vector<MatchFeatures> &matches);
 	double CacuReprojectError(MatchFeatures match,SE3 transform);
 	void CacuTransfer5pRansac(vector<MatchFeatures> &matches);
+	double CacuNCC(Point point0,Point point1,cv::Mat img0,cv::Mat img1);
 
 public:
     FeaturePointBox ( System* pt );

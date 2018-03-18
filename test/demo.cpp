@@ -15,12 +15,22 @@ int main(int argc, char **argv)
 	 Eigen::Vector3d a,b,t;
 	Eigen::Matrix3d R;
 	R<<1,2,3,2,1,2,3,2,1;
-	a<<3,9,8;
+	a<<-3,-9,8;
+	a/=3;
 	t<<10,-3,7;
 	b=R.inverse()*a+t;
 	std::cout<<R<<endl<<endl;
 	std::cout<<a<<endl<<endl;
 	std::cout<<b<<endl<<endl;
+	std::cout<<"1-norm"<<a.lpNorm<1>()<<endl<<endl;
+	std::cout<<"a[i]"<<a[0]<<a[1]<<a(2)<<endl<<endl;
+
+
+	Eigen::Matrix<uint16_t,3,1> test;
+	 test <<32,7,96;
+	 cout<<test<<endl;
+	 cout<<test.lpNorm<1>()<<endl;
+
 	//**************************//
 
     if(argc < 1)
@@ -48,15 +58,22 @@ int main(int argc, char **argv)
 	//draw 2d map from ground truth
 	Mat map2D(1000, 1000, CV_8UC3, cv::Scalar(0, 0, 0));
 	map2D=0;
-	for(int i=0;i<SLAM.poses.size();i++)
-	{
-		Matrix<double,3,4> a = SLAM.poses[i];
-		cout<<a(0,3)<<"\t"<<a(1,3)<<"\t"<<a(2,3)<<endl;
-		cv::Point pt(500+a(0,3),700-a(2,3));
-		cv::circle(map2D,pt,1,cv::Scalar(200, 0, 0));
-		cv::imshow("map",map2D);
-		cvWaitKey(1);
-	}
+// 	for(int i=0;i<100;i++)
+// // 	for(int i=0;i<SLAM.poses.size();i++)
+// 	{
+//
+// 		Matrix<double,3,4> T = SLAM.poses[i];
+// 		Matrix<double,3,4> Tnext = SLAM.poses[i+1];
+// 		Matrix3d R  = T.block(0,0,3,3);
+// 		Matrix3d Rnext  = Tnext.block(0,0,3,3);
+// 		cout<<T<<endl;
+// 		cout<<R.inverse()*Rnext<<endl;
+// 		cout<<Tnext(0,3)-T(0,3)<<"\t"<<Tnext(1,3)-T(1,3)<<"\t"<<Tnext(2,3)-T(2,3)<<endl<<endl;;
+// // 		cv::Point pt(500+T(0,3),700-T(2,3));
+// // 		cv::circle(map2D,pt,1,cv::Scalar(200, 100, 0));
+// // 		cv::imshow("map",map2D);
+// // 		cvWaitKey(1);
+// 	}
 	//##################
 
     cv::Mat imLeft, imRight;
