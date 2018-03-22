@@ -11,9 +11,8 @@ namespace SOFT
 
 
 System::System ( int i ) :
-    currentFrame ( new Frame ),tracker ( new Tracking ),mapper ( new Mapping ),fPointBox ( new FeaturePointBox ( this ) )
+    currentFrame ( new Frame ),tracker ( new Tracking ),mapper ( new Mapping ),fPointBox ( new FeaturePointBox ( this ) ),camera(new Camera)
 {
-    camera = Camera();
     threadMapping = new thread ( &SOFT::Mapping::RunMapping, mapper );
 }
 

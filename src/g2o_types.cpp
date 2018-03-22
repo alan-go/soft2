@@ -113,5 +113,41 @@ void EdgeProjectXYZ2UVPoseOnly::linearizeOplus()
     _jacobianOplusXi ( 1,5 ) = y/z_2 *camera_->fy_;
 }
 
+// void EdgePoseT::linearizeOplus()
+// {
+//     //g2o::BaseUnaryEdge< int ( 4 ), Eigen::Vector4d, SOFT::VertexPoseT >::linearizeOplus();
+//
+// 	VertexPoseT* v = static_cast<VertexPoseT*> (_vertices[0]);
+//
+// 	Eigen::Vector3d t = v->estimate();
+// 	Eigen::Vector3d pointCamera = rotate*point+t;
+//
+// 	double focal = camera->fx_;
+// 	double cx = camera->cx_;
+// 	double cy = camera->cy_;
+//
+// 	double X = pointCamera[0];
+// 	double Y = pointCamera[1];
+// 	double Z = pointCamera[2];
+// 	double Z2 = Z*Z;
+//
+// 	_jacobianOplusXi(0,0) = focal/Z;
+// 	_jacobianOplusXi(0,1) = 0;
+// 	_jacobianOplusXi(0,2) = -focal*X/Z2;
+//
+// 	_jacobianOplusXi(1,0) = 0;
+// 	_jacobianOplusXi(1,1) = focal/Z;
+// 	_jacobianOplusXi(1,2) = -focal*Y/Z2;
+//
+// 	_jacobianOplusXi(2,0) = focal/Z;
+// 	_jacobianOplusXi(2,1) = 0;
+// 	_jacobianOplusXi(2,2) = -focal*(X-camera->base)/Z2;
+//
+// 	_jacobianOplusXi(3,0) = 0;
+// 	_jacobianOplusXi(3,1) = focal/Z;
+// 	_jacobianOplusXi(3,2) = -focal*Y/Z2;
+//
+// }
+
 
 }

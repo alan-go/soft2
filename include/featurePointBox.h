@@ -3,6 +3,8 @@
 
 #include "common_include.h"
 #include "system.h"
+#include "g2o_types.h"
+
 using namespace Eigen;
 
 namespace SOFT
@@ -117,8 +119,10 @@ public:
     vector<MatchFeatures> matchFast;
     vector<MatchFeatures> matchDense;
 	SE3 tPrevious2Current;
-	Eigen::Matrix3d R_Eigen;
-	Vector3d tEigen;
+	Matrix3d rCurrent2Word;
+	Vector3d tCurrent2Previous;
+	Matrix3d rCurrent2Previous;
+	Vector3d tCurrent2Word;
 
 private:
     // computes the address offset for coordinates u,v of an image of given

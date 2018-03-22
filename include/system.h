@@ -24,7 +24,7 @@ struct Params
 class System
 {
 public:
-	Camera camera;
+	Camera* camera;
 	int frameNumber = 0;
 	Params params;
     Frame* currentFrame;

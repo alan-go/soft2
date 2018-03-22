@@ -23,11 +23,11 @@ FeaturePointBox::FeaturePointBox ( System* pt ) :
     serchWindowDense = 5;
     matchSADThreshold = 100000;
     NCCThreshold = 0.98;
-    focal_=systemPtr->camera.fx_;
-    pp_=cv::Point2d ( systemPtr->camera.cx_,systemPtr->camera.cy_ );
+    focal_=systemPtr->camera->fx_;
+    pp_=cv::Point2d ( systemPtr->camera->cx_,systemPtr->camera->cy_ );
     tPrevious2Current = SE3( );
-    tEigen = Vector3d ( 0,0,0 );
-    R_Eigen<<1,0,0,0,1,0,0,0,1;
+    tCurrent2Word = Vector3d ( 0,0,0 );
+    rCurrent2Word<<1,0,0,0,1,0,0,0,1;
     ransacIter = 200;
     map2D = Mat ( 1000, 1000, CV_8UC3, cv::Scalar ( 0, 0, 0 ) );
 }
@@ -289,9 +289,9 @@ bool FeaturePointBox::MatchLoop ( bool isDense )
 
 double FeaturePointBox::CacuReprojectError ( MatchFeatures match, SE3 transform )
 {
-    float cu = systemPtr->camera.cx_;
-    float cv = systemPtr->camera.cy_;
-    float base = systemPtr->camera.base;
+    float cu = systemPtr->camera->cx_;
+    float cv = systemPtr->camera->cy_;
+    float base = systemPtr->camera->base;
     float uLp = match.point[0].u;
     float vLp = match.point[0].v;
     float uRp = match.point[3].u;
@@ -305,8 +305,8 @@ double FeaturePointBox::CacuReprojectError ( MatchFeatures match, SE3 transform 
 
     SOFT::Point pLObserve = match.point[1];
     SOFT::Point pRObserve = match.point[2];
-    Vector2d pLPredict = systemPtr->camera.world2pixel ( point3D,transform );
-    Vector2d pRPredict = systemPtr->camera.world2pixel ( point3D-Vector3d ( base,0,0 ),transform );
+    Vector2d pLPredict = systemPtr->camera->world2pixel ( point3D,transform );
+    Vector2d pRPredict = systemPtr->camera->world2pixel ( point3D-Vector3d ( base,0,0 ),transform );
 
     Vector4d resV ( pLObserve.u-pLPredict ( 0 ),pLObserve.v-pLPredict ( 1 ),pRObserve.u-pRPredict ( 0 ),pRObserve.v-pRPredict ( 1 ) );
 
@@ -341,34 +341,38 @@ void FeaturePointBox::CacuTransfer5pRansac ( vector< MatchFeatures >& matches )
 // 	}
 // 	//**********//
 //
-    Vector3d ttt;
-    Matrix3d RRR;
     E = cv::findEssentialMat ( px_cur_, px_ref_, focal_, pp_, cv::RANSAC, 0.999, 1.0, mask );
+// 	cout<<mask<<endl;
     cv::recoverPose ( E, px_cur_, px_ref_, R, t, focal_, pp_,mask );
+
+
 //***********//
-    cv::cv2eigen ( R,RRR );
+    cv::cv2eigen ( R,rCurrent2Previous );
 
-    cv::cv2eigen ( t,ttt );
-    R_Eigen = RRR*R_Eigen;
+    cv::cv2eigen ( t,tCurrent2Previous );
+    rCurrent2Word = rCurrent2Previous*rCurrent2Word;
 
+	Matrix<double,190,1> maskV;
+	cv::cv2eigen(mask,maskV);
+//	cout<<maskV<<endl;
 
-    tEigen+=R_Eigen*ttt;
-    std::cout<<R_Eigen<<endl;
-    std::cout<<R_Eigen.inverse() <<endl;
-    std::cout<<tEigen<<endl;
+    tCurrent2Word+=rCurrent2Word*tCurrent2Previous;
+    std::cout<<rCurrent2Word<<endl;
 
-
-    cv::Point pt ( 500+tEigen ( 0 ),700-tEigen ( 2 ) );
-    cv::circle ( map2D,pt,1,cv::Scalar ( 200, 100, 0 ) );
-    cv::imshow ( "map",map2D );
-    cvWaitKey ( 1 );
+    std::cout<<tCurrent2Word<<endl;
+//
+//
+//     cv::Point pt ( 500+tCurrent2Word ( 0 ),700-tCurrent2Word ( 2 ) );
+//     cv::circle ( map2D,pt,1,cv::Scalar ( 200, 100, 0 ) );
+//     cv::imshow ( "map",map2D );
+//     cvWaitKey ( 1 );
 //***********//
 
 // project matches of previous image into 3d
-    vector<Vector3d> points3D;
-    float cu = systemPtr->camera.cx_;
-    float cv = systemPtr->camera.cy_;
-    float base = systemPtr->camera.base;
+    vector<Vector3d> points3D,points3DC;
+    float cu = systemPtr->camera->cx_;
+    float cv = systemPtr->camera->cy_;
+    float base = systemPtr->camera->base;
 
     cv::RNG rng ( time ( 0 ) );
 
@@ -377,27 +381,6 @@ void FeaturePointBox::CacuTransfer5pRansac ( vector< MatchFeatures >& matches )
         float vLp = matches[n].point[0].v;
         float uRp = matches[n].point[3].u;
         float vRp = matches[n].point[3].v;
-// ///////////////////////////////////////////////
-// 		Mat imgl,imgr,imglc,imgrc;//
-// 		dataPrevious.leftImage.convertTo(imgl,CV_8UC3); ///
-// 		dataPrevious.rightImage.convertTo(imgr,CV_8UC3); ///
-// 		dataCurrent.leftImage.convertTo(imglc,CV_8UC3); ///
-// 		dataCurrent.rightImage.convertTo(imgrc,CV_8UC3); ///
-// 		cv::Scalar color(0,0,200);
-// 		cv::Point pl(uLp,vLp);//
-// 		cv::Point pr(uRp,vRp);//
-// 		cv::Point plc(matches[n].point[1].u,matches[n].point[1].v);
-// 		cv::Point prc(matches[n].point[2].u,matches[n].point[2].v);
-// 		cv::circle(imgl,pl,8,color);
-// 		cv::circle(imgr,pr,8,color);
-// 		cv::circle(imglc,plc,8,color);
-// 		cv::circle(imgrc,prc,8,color);
-// 		cv::imshow("leftPoint",imgl);
-// 		cv::imshow("rightPoint",imgr);
-// 		cv::imshow("leftPointc",imglc);
-// 		cv::imshow("rightPointc",imgrc);
-// 		cvWaitKey(0);
-// 		///////////////////////////////////////////////
 
         double d = max ( uLp - uRp,0.0001f );
         double x = ( uLp-cu ) *base/d;
@@ -406,11 +389,273 @@ void FeaturePointBox::CacuTransfer5pRansac ( vector< MatchFeatures >& matches )
         Vector3d point3D ( x,y,z );
         points3D.push_back ( point3D );
     }
+
+    for ( int n =0; n<matches.size(); n++ ) {
+		float uLp = matches[n].point[1].u;
+		float vLp = matches[n].point[1].v;
+		float uRp = matches[n].point[2].u;
+		float vRp = matches[n].point[2].v;
+
+		double d = max ( uLp - uRp,0.0001f );
+		double x = ( uLp-cu ) *base/d;
+		double y = ( vLp-cv ) *base/d;
+		double z = focal_*base/d;
+		Vector3d point3D ( x,y,z );
+		points3DC.push_back ( point3D );
+	}
+
+	/*
+	//看关键点
+    for(int i=0;i<matches.size();i++)
+	{
+
+		Point point0 = matches[i].point[0];
+		Point point1 = matches[i].point[1];
+		Point point2 = matches[i].point[2];
+		Point point3 = matches[i].point[3];
+		cout<<point0.u<<" "<<point0.v<<" "<<point3.u<<" "<<point3.v<<endl;
+		cout<<point1.u<<" "<<point1.v<<" "<<point2.u<<" "<<point2.v<<endl;
+		cout<<points3D[i].transpose()<<endl;
+		cout<<points3DC[i].transpose()<<endl;
+		cout<<(points3D[i]-rCurrent2Previous* points3DC[i]).transpose()<<endl<<endl;
+
+		///////////////////////////////////////////////
+		Mat imgl,imgr,imglc,imgrc;//
+		dataPrevious.leftImage.convertTo(imgl,CV_8UC3); ///
+		dataPrevious.rightImage.convertTo(imgr,CV_8UC3); ///
+		dataCurrent.leftImage.convertTo(imglc,CV_8UC3); ///
+		dataCurrent.rightImage.convertTo(imgrc,CV_8UC3); ///
+		cv::Scalar color(200,200,200);
+		cv::Point pl(matches[i].point[0].u,matches[i].point[0].v);//
+		cv::Point pr(matches[i].point[3].u,matches[i].point[3].v);
+		cv::Point plc(matches[i].point[1].u,matches[i].point[1].v);
+		cv::Point prc(matches[i].point[2].u,matches[i].point[2].v);
+		cv::circle(imgl,pl,8,color);
+		cv::circle(imgr,pr,8,color);
+		cv::circle(imglc,plc,8,color);
+		cv::circle(imgrc,prc,8,color);
+		cv::imshow("leftPoint",imgl);
+		cv::imshow("rightPoint",imgr);
+		cv::imshow("leftPointc",imglc);
+		cv::imshow("rightPointc",imgrc);
+		cvWaitKey(0);
+		///////////////////////////////////////////////
+	}
+
+
+	//看每个点的 冲投影误差
+for (int i=0;i<matches.size();i++){
+	Vector3d t = rCurrent2Previous*points3DC[i]-points3D[i];
+	SE3 T(rCurrent2Previous.inverse(),-t);
+	cout<<"t = " <<t<<endl;
+	for(int n = 0;n<matches.size();n++)
+	{
+		Point uvLObserve = matches[n].point[1];
+		Point uvRObserve = matches[n].point[2];
+		Vector3d XYZ = systemPtr->camera->world2camera(points3D[n],T);
+
+		Vector2d uvleftPredict = systemPtr->camera->camera2pixel(XYZ);
+		Vector2d uvRightPredict = systemPtr->camera->camera2pixel(XYZ-Vector3d(base,0,0));
+		Vector4d resV(uvLObserve.u-uvleftPredict(0),uvLObserve.v-uvleftPredict(1),uvRObserve.u-uvRightPredict(0),uvRObserve.v-uvRightPredict(1));
+		cout<<"resv "<<n<<endl<<resV<<endl;
+		double res  = resV.squaredNorm();
+		cout<<"resReproj = "<<res<<endl;
+	}
+}*/
+
+
+
 //1 point RANSAC
     int inlinNumber = 0;
     int bestIndex = 0;
     static std::default_random_engine e ( 0 );
     static std::uniform_int_distribution<int> u ( 0, points3D.size() );
+
+
+
+
+
+	// 构建图优化，先设定g2o
+	typedef g2o::BlockSolver< g2o::BlockSolverTraits<3,3> > Block;  // 每个误差项优化变量维度为3，误差值维度为1
+	Block::LinearSolverType* linearSolver = new g2o::LinearSolverDense<Block::PoseMatrixType>(); // 线性方程求解器
+	Block* solver_ptr = new Block( linearSolver );      // 矩阵块求解器
+	// 梯度下降方法，从GN, LM, DogLeg 中选
+	g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg( solver_ptr );
+	// g2o::OptimizationAlgorithmGaussNewton* solver = new g2o::OptimizationAlgorithmGaussNewton( solver_ptr );
+	// g2o::OptimizationAlgorithmDogleg* solver = new g2o::OptimizationAlgorithmDogleg( solver_ptr );
+	g2o::SparseOptimizer optimizer;     // 图模型
+	optimizer.setAlgorithm( solver );   // 设置求解器
+	optimizer.setVerbose( true );       // 打开调试输出
+
+
+
+for(int n = 0;n<20;n++)
+{
+	// 往图中增加顶点
+	VertexPoseT * poset = new VertexPoseT();
+	poset->setEstimate ( tCurrent2Previous);
+	poset->setId ( 0 );
+	optimizer.addVertex ( poset );
+
+    // 往图中增加边
+	vector<EdgeXYZt*> edges;
+
+    for ( int i=0; i<50; i++ ) {
+
+		int ind = u ( e );
+		ind =i;
+cout<<ind<<endl;
+		VertexPoseT * xyz = new VertexPoseT();
+		xyz->setEstimate ( points3D[ind] );
+		xyz->setId ( 1+i );
+		xyz->setMarginalized(true);
+		optimizer.addVertex ( xyz );
+
+		EdgeXYZt* edge = new EdgeXYZt (rCurrent2Previous,systemPtr->camera);
+        edge->setId ( i );
+        // 设置连接的顶点
+		edge->setVertex( 0, poset );
+		edge->setVertex( 1, xyz );
+
+        SOFT::Point p0 = matches[ind].point[0];
+        SOFT::Point p1 = matches[ind].point[1];
+        SOFT::Point p2 = matches[ind].point[2];
+        SOFT::Point p3 = matches[ind].point[3];
+
+        Matrix<double,8,1> observe;
+        observe<< p0.u,p0.v,p1.u,p1.v,p2.u,p2.v,p3.u,p3.v;
+        // 观测数值
+        edge->setMeasurement ( observe );
+        // 信息矩阵：协方差矩阵之逆
+		edge->setInformation ( Matrix<double,8,8>::Identity());
+		edge->setRobustKernel( new g2o::RobustKernelHuber() );
+        optimizer.addEdge ( edge );
+
+		edges.push_back(edge);
+    }
+       cout<<"edge number : "<<edges.size()<<endl;
+    // 执行优化
+    cout<<"start optimization"<<endl;
+    optimizer.initializeOptimization();
+	optimizer.optimize ( 3 );
+
+    // 输出优化值
+    tCurrent2Previous = poset->estimate();
+    cout<<"estimated model: "<<tCurrent2Previous.transpose() <<endl;
+	cout<<"edge number : "<<edges.size()<<endl;
+
+	// 估计inlier的个数
+	int inliers = 0;
+	for ( auto e:edges )
+	{
+		cout<<e->calcu.transpose()<<endl;
+		e->computeError();
+		cout<<"error = "<<e->chi2()<<endl;
+		// chi2 就是 error*\Omega*error, 如果这个数很大，说明此边的值与其他边很不相符
+		if ( e->chi2() > 1 )
+		{
+			optimizer.removeEdge(e);
+			edges.erase(remove(edges.begin(),edges.end(),e),edges.end());
+		}
+		else
+		{
+			inliers++;
+		}
+	}
+	cout<<"inliers in total points: "<<inliers<<endl;
+
+
+	cout<<"start 2nd optimization"<<endl;
+	cout<<"edge number : "<<edges.size()<<endl;
+	optimizer.initializeOptimization();
+	optimizer.optimize ( 10 );
+
+	// 输出优化值
+	tCurrent2Previous = poset->estimate();
+	cout<<"estimated model: "<<tCurrent2Previous.transpose() <<endl;
+
+
+	optimizer.clear();
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+//     for ( int i =0; i<ransacIter; i++ ) {
+//         int ind = u ( e );
+//         Vector3d pointTemp = points3D[ind];
+//         SOFT::Point pLObserve = matches[ind].point[1];
+//         SOFT::Point pRObserve = matches[ind].point[2];
+// 		Vector4d observe ( pLObserve.u,pLObserve.v,pRObserve.u,pRObserve.v );
+// 		Vector4d observe2 ( matches[ind+1].point[1].u,matches[ind+1].point[1].v,matches[ind+1].point[2].u,matches[ind+1].point[2].v );///
+//
+//         // 构建图优化，先设定g2o
+//         // 每个误差项优化变量维度为3，误差值维度为1
+//         typedef g2o::BlockSolver< g2o::BlockSolverTraits<3,4>> Block;
+//         // 线性方程求解器
+//         Block::LinearSolverType* linearSolver = new g2o::LinearSolverDense<Block::PoseMatrixType>();
+//         // 矩阵块求解器
+//         Block* solver_ptr = new Block ( linearSolver );
+//         // 梯度下降方法，从GN, LM, DogLeg 中选
+// //         g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg ( solver_ptr );
+// 		g2o::OptimizationAlgorithmGaussNewton* solver = new g2o::OptimizationAlgorithmGaussNewton( solver_ptr );
+//         // g2o::OptimizationAlgorithmDogleg* solver = new g2o::OptimizationAlgorithmDogleg( solver_ptr );
+//         // 图模型
+//         g2o::SparseOptimizer optimizer;
+//         // 设置求解器
+//         optimizer.setAlgorithm ( solver );
+//         // 打开调试输出
+//         optimizer.setVerbose ( true );
+//
+//         // 往图中增加顶点
+//         VertexPoseT * v = new VertexPoseT();
+//         v->setEstimate ( tCurrent2Previous);
+//         v->setId ( 0 );
+//         optimizer.addVertex ( v );
+//
+//         // 往图中增加边
+// for (int i=0;i<190;i++){
+// 	if(maskV(i)){
+//         EdgePoseT* edge = new EdgePoseT ( points3D[i],rCurrent2Previous.inverse(),systemPtr->camera );
+//         edge->setId ( i );
+// 		// 设置连接的顶点
+//         edge->setVertex ( 0, v );
+//
+// 		SOFT::Point pLObserve = matches[i].point[1];
+// 		SOFT::Point pRObserve = matches[i].point[2];
+// 		Vector4d observe ( pLObserve.u,pLObserve.v,pRObserve.u,pRObserve.v );
+// 		// 观测数值
+//         edge->setMeasurement ( observe );
+// 		// 信息矩阵：协方差矩阵之逆
+//         edge->setInformation ( Eigen::Matrix<double,4,4>::Identity());
+//         optimizer.addEdge ( edge );
+// }}
+//         // 执行优化
+//         cout<<"start optimization"<<endl;
+//         chrono::steady_clock::time_point t1 = chrono::steady_clock::now();
+//         optimizer.initializeOptimization();
+//         optimizer.optimize ( 100 );
+//         chrono::steady_clock::time_point t2 = chrono::steady_clock::now();
+//         chrono::duration<double> time_used = chrono::duration_cast<chrono::duration<double>> ( t2-t1 );
+//         cout<<"solve time cost = "<<time_used.count() <<" seconds. "<<endl;
+// 		optimizer.clear();
+//         // 输出优化值
+//         tCurrent2Previous = v->estimate();
+//         cout<<"estimated model: "<<tCurrent2Previous.transpose() <<endl;
+//     }
+
+
+
 
 // 	Vector3d tTemp = tEigen;
 //     for ( int i =0; i<ransacIter; i++ ) {
