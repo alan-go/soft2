@@ -55,7 +55,7 @@ void System::TrackStereo (  cv::Mat &imLeft,  cv::Mat &imRight,  double& timesta
     if ( frameNumber > 0 ) {
         fPointBox->FeatureProcess ( frameNumber );
 
-		SOFT::Frame* nextFrame = new Frame(this,fPointBox);
+		//SOFT::Frame* nextFrame = new Frame(this,fPointBox);
 
     }
 

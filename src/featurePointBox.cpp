@@ -2,7 +2,7 @@
 #include "featurePointBox.h"
 #include "system.h"
 using namespace Eigen;
-
+using namespace g2o;
 namespace SOFT
 {
 
@@ -36,111 +36,6 @@ FeaturePointBox::~FeaturePointBox()
 
 }
 
-FrameData FeaturePointBox::FilterImage ( Mat leftImage, Mat rigtImage )
-{
-    FrameData dataTemp;
-    dataTemp.leftImage = leftImage;
-    dataTemp.rightImage = rigtImage;
-
-
-    Mat kernBlob = ( cv::Mat_<char> ( 5,5 ) <<
-                     -1,-1,-1,-1,-1,
-                     -1, 1, 1, 1,-1,
-                     -1, 1, 8, 1,-1,
-                     -1, 1, 1, 1,-1,
-                     -1,-1,-1,-1,-1 );
-    Mat kernCorner = ( cv::Mat_<char> ( 5,5 ) <<
-                       -1,-1, 0, 1, 1,
-                       -1,-1, 0, 1, 1,
-                       0, 0, 0, 0, 0,
-                       1, 1, 0,-1,-1,
-                       1, 1, 0,-1,-1 );
-
-    Mat kernSobelV = ( cv::Mat_<char> ( 5,5 ) <<
-                       -5,-8, -10, -8,-5,
-                       -4,-10,-20,-10,-4,
-                       0, 0,  0,  0,  0,
-                       4, 10, 20, 10, 4,
-                       5, 8,  10, 8,  5 );
-
-    Mat kernSobelH = ( cv::Mat_<char> ( 5,5 ) <<
-                       -5, -4, 0, 4, 5,
-                       -8, -10,0, 10,8,
-                       -10,-20,0, 20,10,
-                       -8, -10,0, 10,8,
-                       -5, -4, 0, 4, 5 );
-
-
-    leftImage.convertTo ( dataTemp.leftImageInt16,CV_16S );
-    rigtImage.convertTo ( dataTemp.rightImageInt16,CV_16S );
-
-    cv::filter2D ( dataTemp.leftImageInt16,dataTemp.leftBlob,-1,kernBlob );
-    cv::filter2D ( dataTemp.leftImageInt16,dataTemp.leftCorner,-1,kernCorner );
-    cv::filter2D ( dataTemp.rightImageInt16,dataTemp.rightBlob,-1,kernBlob );
-    cv::filter2D ( dataTemp.rightImageInt16,dataTemp.rightCorner,-1,kernCorner );
-
-
-    cv::filter2D ( dataTemp.leftImageInt16,dataTemp.leftSobelVer,-1,kernSobelV );
-    cv::filter2D ( dataTemp.leftImageInt16,dataTemp.leftSobelHor,-1,kernSobelH );
-    cv::filter2D ( dataTemp.rightImageInt16,dataTemp.rightSobelVer,-1,kernSobelV );
-    cv::filter2D ( dataTemp.rightImageInt16,dataTemp.RightSobelHor,-1,kernSobelH );
-
-    return dataTemp;
-
-}
-
-
-bool FeaturePointBox::ExtractFPointsFromImage ( Mat &leftImage, Mat &rigtImage )
-{
-    dataPrevious = dataCurrent;
-
-    dataCurrent = FilterImage ( leftImage,rigtImage );
-
-    int16_t* pLeftBlob = ( int16_t* ) dataCurrent.leftBlob.data;
-    int16_t* pLeftCorner = ( int16_t* ) dataCurrent.leftCorner.data;
-    int16_t* pRigtBlob = ( int16_t* ) dataCurrent.rightBlob.data;
-    int16_t* pRigtCorner = ( int16_t* ) dataCurrent.rightCorner.data;
-
-    int16_t* pLeftSobleVer = ( int16_t* ) dataCurrent.leftSobelVer.data;
-    int16_t* pLeftSobleHor = ( int16_t* ) dataCurrent.leftSobelHor.data;
-    int16_t* pRightSobleVer = ( int16_t* ) dataCurrent.rightSobelVer.data;
-    int16_t* pRightSobleHor = ( int16_t* ) dataCurrent.RightSobelHor.data;
-
-
-    //计算nms，左图，右图，fast，dense
-    NonMaximumSuppression ( pLeftBlob,pLeftCorner,dataCurrent.pointsLeftLess,10 );
-    NonMaximumSuppression ( pRigtBlob,pRigtCorner,dataCurrent.pointsRightLess,10 );
-    NonMaximumSuppression ( pLeftBlob,pLeftCorner,dataCurrent.pointsLeft,3 );
-    NonMaximumSuppression ( pRigtBlob,pRigtCorner,dataCurrent.pointsRight,3 );
-// //#################################
-//     for ( int i =0; i<dataCurrent.pointsLeftLess.size(); i++ ) {
-//         cv::Point center = cv::Point ( dataCurrent.pointsLeftLess[i].u,dataCurrent.pointsLeftLess[i].v );
-//         //参数为：承载的图像、圆心、半径、颜色、粗细、线型
-//         cv::circle ( dataCurrent.leftImage,center,2,cv::Scalar ( 255,0,0 ) );
-//     }
-//     imshow ( "pointsLeftLess",dataCurrent.leftImage );
-//
-// 	for ( int i =0; i<dataCurrent.pointsRight.size(); i++ ) {
-// 		cv::Point center = cv::Point ( dataCurrent.pointsRight[i].u,dataCurrent.pointsRight[i].v );
-// 		//参数为：承载的图像、圆心、半径、颜色、粗细、线型
-// 		cv::circle ( dataCurrent.rightImage,center,2,cv::Scalar ( 255,0,0 ) );
-// 	}
-// 	imshow ( "pointsRight",dataCurrent.rightImage );
-// 	cvWaitKey(0);
-// //#################################
-
-
-    //computediscriptors
-    //左图
-    ComputeDiscriptors ( pLeftSobleVer,pLeftSobleHor,dataCurrent.pointsLeftLess );
-    ComputeDiscriptors ( pLeftSobleVer,pLeftSobleHor,dataCurrent.pointsLeft );
-    //右图
-
-    ComputeDiscriptors ( pRightSobleVer,pRightSobleHor,dataCurrent.pointsRightLess );
-    ComputeDiscriptors ( pRightSobleVer,pRightSobleHor,dataCurrent.pointsRight );
-    return true;
-
-}
 
 bool FeaturePointBox::FeatureProcess ( int frameNumber )
 {
@@ -162,20 +57,13 @@ bool FeaturePointBox::FeatureProcess ( int frameNumber )
 //     MatchLoop ( true );
 
 
-    //77777777777777777777777777777777777777777
-// 	for(int i=0;i<matchFast.size();i++)
-// 	{
-// 		MatchFeatures temp = matchFast[i];
-// 		double NCC = CacuNCC(temp.point[0],temp.point[2],dataPrevious.leftImage,dataCurrent.rightImage);
-// 		std::cout<<NCC<<endl;
-// 	}
 
-// 	for(int i=0;i<matchDense.size();i++)
-// 	{
-// 		MatchFeatures temp = matchDense[i];
-// 		double NCC = CacuNCC(temp.point[0],temp.point[2],dataPrevious.leftImage,dataCurrent.rightImage);
-// 		std::cout<<NCC<<endl;
-// 	}
+    //77777777777777777777777777777777777777777
+MatchFeatures  matchtemp = matchFast[0];
+cout<<matchtemp.point[0].u<<endl;
+matchtemp.point[4].u = 10;
+cout<<matchtemp.point[0].u<<endl;
+cout<<matchFast[0].point[0].u<<endl;
 
     //77777777777777777777777777777777777777777
     //refine
@@ -219,6 +107,21 @@ void FeaturePointBox::InitRangesForFastMatch ( bool isBegin )
         rangesAll=result;
     }
 }
+
+void FeaturePointBox::RefineToSubPixel ( vector< MatchFeatures >& matches, int16_t* sobelVer, int16_t* sobleHor )
+{
+	int16_t* pLeftSobleVer = ( int16_t* ) dataCurrent.leftSobelVer.data;
+	int16_t* pLeftSobleHor = ( int16_t* ) dataCurrent.leftSobelHor.data;
+	int16_t* pRightSobleVer = ( int16_t* ) dataCurrent.rightSobelVer.data;
+	int16_t* pRightSobleHor = ( int16_t* ) dataCurrent.RightSobelHor.data;
+	for(int i=0;i<matches.size();i++)
+	{
+		Refine2points(matches[i].point[0],matches[i].point[1],);
+
+	}
+}
+
+
 
 double FeaturePointBox::CacuNCC ( Point point0, Point point1, cv::Mat img0, cv::Mat img1 )
 {
@@ -274,7 +177,6 @@ bool FeaturePointBox::MatchLoop ( bool isDense )
                                 if ( point00.id==point0.id ) {
                                     matches.push_back ( MatchFeatures ( point0,point1,point2,point3 ) );
                                 }
-
         }
         matchFast = matches;
     }
@@ -345,28 +247,16 @@ void FeaturePointBox::CacuTransfer5pRansac ( vector< MatchFeatures >& matches )
 // 	cout<<mask<<endl;
     cv::recoverPose ( E, px_cur_, px_ref_, R, t, focal_, pp_,mask );
 
-
 //***********//
     cv::cv2eigen ( R,rCurrent2Previous );
-
     cv::cv2eigen ( t,tCurrent2Previous );
-    rCurrent2Word = rCurrent2Previous*rCurrent2Word;
 
-	Matrix<double,190,1> maskV;
-	cv::cv2eigen(mask,maskV);
+    Matrix<double,Dynamic,1> maskV;
+    cv::cv2eigen ( mask,maskV );
 //	cout<<maskV<<endl;
 
-    tCurrent2Word+=rCurrent2Word*tCurrent2Previous;
-    std::cout<<rCurrent2Word<<endl;
 
-    std::cout<<tCurrent2Word<<endl;
-//
-//
-//     cv::Point pt ( 500+tCurrent2Word ( 0 ),700-tCurrent2Word ( 2 ) );
-//     cv::circle ( map2D,pt,1,cv::Scalar ( 200, 100, 0 ) );
-//     cv::imshow ( "map",map2D );
-//     cvWaitKey ( 1 );
-//***********//
+
 
 // project matches of previous image into 3d
     vector<Vector3d> points3D,points3DC;
@@ -391,77 +281,87 @@ void FeaturePointBox::CacuTransfer5pRansac ( vector< MatchFeatures >& matches )
     }
 
     for ( int n =0; n<matches.size(); n++ ) {
-		float uLp = matches[n].point[1].u;
-		float vLp = matches[n].point[1].v;
-		float uRp = matches[n].point[2].u;
-		float vRp = matches[n].point[2].v;
+        float uLp = matches[n].point[1].u;
+        float vLp = matches[n].point[1].v;
+        float uRp = matches[n].point[2].u;
+        float vRp = matches[n].point[2].v;
 
-		double d = max ( uLp - uRp,0.0001f );
-		double x = ( uLp-cu ) *base/d;
-		double y = ( vLp-cv ) *base/d;
-		double z = focal_*base/d;
-		Vector3d point3D ( x,y,z );
-		points3DC.push_back ( point3D );
-	}
+        double d = max ( uLp - uRp,0.0001f );
+        double x = ( uLp-cu ) *base/d;
+        double y = ( vLp-cv ) *base/d;
+        double z = focal_*base/d;
+        Vector3d point3D ( x,y,z );
+        points3DC.push_back ( point3D );
+    }
 
-	/*
-	//看关键点
+
+
+
+    /*
+    //看关键点
     for(int i=0;i<matches.size();i++)
-	{
+    {
 
-		Point point0 = matches[i].point[0];
-		Point point1 = matches[i].point[1];
-		Point point2 = matches[i].point[2];
-		Point point3 = matches[i].point[3];
-		cout<<point0.u<<" "<<point0.v<<" "<<point3.u<<" "<<point3.v<<endl;
-		cout<<point1.u<<" "<<point1.v<<" "<<point2.u<<" "<<point2.v<<endl;
-		cout<<points3D[i].transpose()<<endl;
-		cout<<points3DC[i].transpose()<<endl;
-		cout<<(points3D[i]-rCurrent2Previous* points3DC[i]).transpose()<<endl<<endl;
+    	Point point0 = matches[i].point[0];
+    	Point point1 = matches[i].point[1];
+    	Point point2 = matches[i].point[2];
+    	Point point3 = matches[i].point[3];
+    	cout<<point0.u<<" "<<point0.v<<" "<<point3.u<<" "<<point3.v<<endl;
+    	cout<<point1.u<<" "<<point1.v<<" "<<point2.u<<" "<<point2.v<<endl;
+    	cout<<points3D[i].transpose()<<endl;
+    	cout<<points3DC[i].transpose()<<endl;
+    	cout<<(points3D[i]-rCurrent2Previous* points3DC[i]).transpose()<<endl<<endl;
 
-		///////////////////////////////////////////////
-		Mat imgl,imgr,imglc,imgrc;//
-		dataPrevious.leftImage.convertTo(imgl,CV_8UC3); ///
-		dataPrevious.rightImage.convertTo(imgr,CV_8UC3); ///
-		dataCurrent.leftImage.convertTo(imglc,CV_8UC3); ///
-		dataCurrent.rightImage.convertTo(imgrc,CV_8UC3); ///
-		cv::Scalar color(200,200,200);
-		cv::Point pl(matches[i].point[0].u,matches[i].point[0].v);//
-		cv::Point pr(matches[i].point[3].u,matches[i].point[3].v);
-		cv::Point plc(matches[i].point[1].u,matches[i].point[1].v);
-		cv::Point prc(matches[i].point[2].u,matches[i].point[2].v);
-		cv::circle(imgl,pl,8,color);
-		cv::circle(imgr,pr,8,color);
-		cv::circle(imglc,plc,8,color);
-		cv::circle(imgrc,prc,8,color);
-		cv::imshow("leftPoint",imgl);
-		cv::imshow("rightPoint",imgr);
-		cv::imshow("leftPointc",imglc);
-		cv::imshow("rightPointc",imgrc);
-		cvWaitKey(0);
-		///////////////////////////////////////////////
-	}
+    	///////////////////////////////////////////////
+    	Mat imgl,imgr,imglc,imgrc;//
+    	dataPrevious.leftImage.convertTo(imgl,CV_8UC3); ///
+    	dataPrevious.rightImage.convertTo(imgr,CV_8UC3); ///
+    	dataCurrent.leftImage.convertTo(imglc,CV_8UC3); ///
+    	dataCurrent.rightImage.convertTo(imgrc,CV_8UC3); ///
+    	cv::Scalar color(200,200,200);
+    	cv::Point pl(matches[i].point[0].u,matches[i].point[0].v);//
+    	cv::Point pr(matches[i].point[3].u,matches[i].point[3].v);
+    	cv::Point plc(matches[i].point[1].u,matches[i].point[1].v);
+    	cv::Point prc(matches[i].point[2].u,matches[i].point[2].v);
+    	cv::circle(imgl,pl,8,color);
+    	cv::circle(imgr,pr,8,color);
+    	cv::circle(imglc,plc,8,color);
+    	cv::circle(imgrc,prc,8,color);
+    	cv::imshow("leftPoint",imgl);
+    	cv::imshow("rightPoint",imgr);
+    	cv::imshow("leftPointc",imglc);
+    	cv::imshow("rightPointc",imgrc);
+    	cvWaitKey(0);
+    	///////////////////////////////////////////////
+    }
 
 
-	//看每个点的 冲投影误差
-for (int i=0;i<matches.size();i++){
-	Vector3d t = rCurrent2Previous*points3DC[i]-points3D[i];
-	SE3 T(rCurrent2Previous.inverse(),-t);
-	cout<<"t = " <<t<<endl;
-	for(int n = 0;n<matches.size();n++)
-	{
-		Point uvLObserve = matches[n].point[1];
-		Point uvRObserve = matches[n].point[2];
-		Vector3d XYZ = systemPtr->camera->world2camera(points3D[n],T);
 
-		Vector2d uvleftPredict = systemPtr->camera->camera2pixel(XYZ);
-		Vector2d uvRightPredict = systemPtr->camera->camera2pixel(XYZ-Vector3d(base,0,0));
-		Vector4d resV(uvLObserve.u-uvleftPredict(0),uvLObserve.v-uvleftPredict(1),uvRObserve.u-uvRightPredict(0),uvRObserve.v-uvRightPredict(1));
-		cout<<"resv "<<n<<endl<<resV<<endl;
-		double res  = resV.squaredNorm();
-		cout<<"resReproj = "<<res<<endl;
-	}
-}*/
+
+
+    //看每个点的 冲投影误差
+    for (int i=0;i<matches.size();i++){
+    Vector3d t = rCurrent2Previous*points3DC[i]-points3D[i];
+    SE3 T(rCurrent2Previous.inverse(),-t);
+    cout<<"t = " <<t<<endl;
+    for(int n = 0;n<matches.size();n++)
+    {
+    	Point uvLObserve = matches[n].point[1];
+    	Point uvRObserve = matches[n].point[2];
+    	Vector3d XYZ = systemPtr->camera->world2camera(points3D[n],T);
+
+    	Vector2d uvleftPredict = systemPtr->camera->camera2pixel(XYZ);
+    	Vector2d uvRightPredict = systemPtr->camera->camera2pixel(XYZ-Vector3d(base,0,0));
+    	Vector4d resV(uvLObserve.u-uvleftPredict(0),uvLObserve.v-uvleftPredict(1),uvRObserve.u-uvRightPredict(0),uvRObserve.v-uvRightPredict(1));
+    	cout<<"resv "<<n<<endl<<resV<<endl;
+    	double res  = resV.squaredNorm();
+    	cout<<"resReproj = "<<res<<endl;
+    }
+    }*/
+
+
+
+
 
 
 
@@ -472,50 +372,45 @@ for (int i=0;i<matches.size();i++){
     static std::uniform_int_distribution<int> u ( 0, points3D.size() );
 
 
+    // 构建图优化，先设定g2o
+    typedef g2o::BlockSolver< g2o::BlockSolverTraits<3,3> > Block;
+    Block::LinearSolverType* linearSolver = new g2o::LinearSolverDense<Block::PoseMatrixType>();
+    Block* solver_ptr = new Block ( linearSolver );
+    g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg ( solver_ptr );
+    // g2o::OptimizationAlgorithmGaussNewton* solver = new g2o::OptimizationAlgorithmGaussNewton( solver_ptr );
+    // g2o::OptimizationAlgorithmDogleg* solver = new g2o::OptimizationAlgorithmDogleg( solver_ptr );
+    g2o::SparseOptimizer optimizer;
+    optimizer.setAlgorithm ( solver );
+    optimizer.setVerbose ( true );
 
 
 
-	// 构建图优化，先设定g2o
-	typedef g2o::BlockSolver< g2o::BlockSolverTraits<3,3> > Block;  // 每个误差项优化变量维度为3，误差值维度为1
-	Block::LinearSolverType* linearSolver = new g2o::LinearSolverDense<Block::PoseMatrixType>(); // 线性方程求解器
-	Block* solver_ptr = new Block( linearSolver );      // 矩阵块求解器
-	// 梯度下降方法，从GN, LM, DogLeg 中选
-	g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg( solver_ptr );
-	// g2o::OptimizationAlgorithmGaussNewton* solver = new g2o::OptimizationAlgorithmGaussNewton( solver_ptr );
-	// g2o::OptimizationAlgorithmDogleg* solver = new g2o::OptimizationAlgorithmDogleg( solver_ptr );
-	g2o::SparseOptimizer optimizer;     // 图模型
-	optimizer.setAlgorithm( solver );   // 设置求解器
-	optimizer.setVerbose( true );       // 打开调试输出
+    // 往图中增加顶点
+    VertexPoseT * poset = new VertexPoseT();
+    poset->setEstimate ( tCurrent2Previous );
 
-
-
-for(int n = 0;n<20;n++)
-{
-	// 往图中增加顶点
-	VertexPoseT * poset = new VertexPoseT();
-	poset->setEstimate ( tCurrent2Previous);
-	poset->setId ( 0 );
-	optimizer.addVertex ( poset );
+    poset->setId ( 0 );
+    optimizer.addVertex ( poset );
 
     // 往图中增加边
-	vector<EdgeXYZt*> edges;
+    vector<EdgeXYZt*> edges;
 
-    for ( int i=0; i<50; i++ ) {
+    for ( int i=0; i<matches.size(); i++ ) {
 
-		int ind = u ( e );
-		ind =i;
-cout<<ind<<endl;
-		VertexPoseT * xyz = new VertexPoseT();
-		xyz->setEstimate ( points3D[ind] );
-		xyz->setId ( 1+i );
-		xyz->setMarginalized(true);
-		optimizer.addVertex ( xyz );
+        int ind = u ( e );
+        ind =i;
+//             cout<<ind<<endl;
+        VertexPoseT * xyz = new VertexPoseT();
+        xyz->setEstimate ( points3D[ind] );
+        xyz->setId ( 1+i );
+        xyz->setMarginalized ( true );
+        optimizer.addVertex ( xyz );
 
-		EdgeXYZt* edge = new EdgeXYZt (rCurrent2Previous,systemPtr->camera);
+        EdgeXYZt* edge = new EdgeXYZt ( rCurrent2Previous,systemPtr->camera );
         edge->setId ( i );
         // 设置连接的顶点
-		edge->setVertex( 0, poset );
-		edge->setVertex( 1, xyz );
+        edge->setVertex ( 0, poset );
+        edge->setVertex ( 1, xyz );
 
         SOFT::Point p0 = matches[ind].point[0];
         SOFT::Point p1 = matches[ind].point[1];
@@ -524,60 +419,187 @@ cout<<ind<<endl;
 
         Matrix<double,8,1> observe;
         observe<< p0.u,p0.v,p1.u,p1.v,p2.u,p2.v,p3.u,p3.v;
-        // 观测数值
         edge->setMeasurement ( observe );
         // 信息矩阵：协方差矩阵之逆
-		edge->setInformation ( Matrix<double,8,8>::Identity());
-		edge->setRobustKernel( new g2o::RobustKernelHuber() );
+        edge->setInformation ( Matrix<double,8,8>::Identity() *10 );
+        edge->setRobustKernel ( new g2o::RobustKernelHuber() );
         optimizer.addEdge ( edge );
 
-		edges.push_back(edge);
+        edges.push_back ( edge );
     }
-       cout<<"edge number : "<<edges.size()<<endl;
+    cout<<"edge number : "<<edges.size() <<endl;
     // 执行优化
-    cout<<"start optimization"<<endl;
+    cout<<"start 1st optimization"<<endl;
     optimizer.initializeOptimization();
-	optimizer.optimize ( 3 );
+    optimizer.optimize ( 10 );
 
     // 输出优化值
     tCurrent2Previous = poset->estimate();
     cout<<"estimated model: "<<tCurrent2Previous.transpose() <<endl;
-	cout<<"edge number : "<<edges.size()<<endl;
+    cout<<"edge number : "<<edges.size() <<endl;
+//////////////////////////2
 
-	// 估计inlier的个数
-	int inliers = 0;
-	for ( auto e:edges )
-	{
-		cout<<e->calcu.transpose()<<endl;
-		e->computeError();
-		cout<<"error = "<<e->chi2()<<endl;
-		// chi2 就是 error*\Omega*error, 如果这个数很大，说明此边的值与其他边很不相符
-		if ( e->chi2() > 1 )
-		{
-			optimizer.removeEdge(e);
-			edges.erase(remove(edges.begin(),edges.end(),e),edges.end());
-		}
-		else
-		{
-			inliers++;
-		}
-	}
-	cout<<"inliers in total points: "<<inliers<<endl;
+    vector<int> matcheSelect1st,matchesFalse;
+    int inliers = 0;
+    for ( int n=0; n<edges.size(); n++ ) {
+        auto e = edges[n];
+        cout<<e->id() <<" error= "<<e->L2 <<endl;
+        cout<<"measurement "<<e->Measur.transpose() <<endl;
+        cout<<"calcu       "<<e-> calcu.transpose() <<endl;
+        cout<<"error       "<< ( e->Measur-e->calcu ).transpose() <<endl;
+
+        optimizer.edges();
+        if ( e->chi2() > 100 ) {
+            optimizer.removeEdge ( e );
+            matchesFalse.push_back ( n );
+        } else {
+            inliers++;
+            matcheSelect1st.push_back ( n );
+        }
+    }
+
+    cout<<"start 2nd optimization"<<endl;
+    cout<<"edge number : "<<optimizer.edges().size() <<endl;
+
+    optimizer.initializeOptimization();
+    optimizer.optimize ( 30 );
+    tCurrent2Previous = poset->estimate();
+    cout<<"estimated model: "<<tCurrent2Previous.transpose() <<endl;
+////////////////////3
+    vector<int> matcheSelect2st;
+    for ( int n=0; n<matcheSelect1st.size(); n++ ) {
+        auto e = edges[matcheSelect1st[n]];
+        cout<<e->id() <<" error= "<<e->L2 <<endl;
+        cout<<"measurement "<<e->Measur.transpose() <<endl;
+        cout<<"calcu       "<<e-> calcu.transpose() <<endl;
+        cout<<"error       "<< ( e->Measur-e->calcu ).transpose() <<endl;
+        if ( e->chi2() > 3 ) {
+            optimizer.removeEdge ( e );
+            matchesFalse.push_back ( matcheSelect1st[n] );
+        } else {
+            inliers++;
+            matcheSelect2st.push_back ( matcheSelect1st[n] );
+        }
+    }
+
+    cout<<"start 3nd optimization"<<endl;
+    cout<<"edge number : "<<optimizer.edges().size() <<endl;
+
+    optimizer.initializeOptimization();
+    optimizer.optimize ( 30 );
+    tCurrent2Previous = poset->estimate();
+    cout<<"estimated model: "<<tCurrent2Previous.transpose() <<endl;
 
 
-	cout<<"start 2nd optimization"<<endl;
-	cout<<"edge number : "<<edges.size()<<endl;
-	optimizer.initializeOptimization();
-	optimizer.optimize ( 10 );
 
-	// 输出优化值
-	tCurrent2Previous = poset->estimate();
-	cout<<"estimated model: "<<tCurrent2Previous.transpose() <<endl;
+//     for ( int n=0; n<matcheSelect2st.size(); n++ ) {
+//         auto e = edges[matcheSelect2st[n]];
+//         cout<<e->id() <<" error= "<<e->L2 <<endl;
+//         cout<<"measurement "<<e->Measur.transpose() <<endl;
+//         cout<<"calcu       "<<e-> calcu.transpose() <<endl;
+//         cout<<"error       "<< ( e->Measur-e->calcu ).transpose() <<endl;
+//         if ( e->chi2() > 1 ) {
+//             optimizer.removeEdge ( e );
+//             matchesFalse.push_back ( n );
+//         } else {
+//             inliers++;
+//             //matcheSelect2st.push_back ( n );
+//         }
+//     }
 
 
-	optimizer.clear();
+ ////***********//
+    rCurrent2Word = rCurrent2Previous*rCurrent2Word;
 
-}
+    tCurrent2Word+=rCurrent2Word*tCurrent2Previous;
+    std::cout<<rCurrent2Word<<endl;
+    std::cout<<tCurrent2Word<<endl;
+    cv::Point pt ( 500+tCurrent2Word ( 0 ),700-tCurrent2Word ( 2 ) );
+    cv::circle ( map2D,pt,1,cv::Scalar ( 200, 100, 0 ) );
+    cv::imshow ( "map",map2D );
+
+    cvWaitKey ( 1 );
+   cv::imwrite ( "map.jpg",map2D );
+
+ ////***********//
+
+
+
+
+
+
+/*
+
+    cout<<"match num select"<<matcheSelect1st.size() <<endl;
+    //看关键点
+    for ( int n=0; n<matcheSelect1st.size(); n++ ) {
+        int i = matcheSelect1st[n];
+        Point point0 = matches[i].point[0];
+        Point point1 = matches[i].point[1];
+        Point point2 = matches[i].point[2];
+        Point point3 = matches[i].point[3];
+        cout<<point0.u<<" "<<point0.v<<" "<<point3.u<<" "<<point3.v<<endl;
+        cout<<point1.u<<" "<<point1.v<<" "<<point2.u<<" "<<point2.v<<endl;
+        cout<<points3D[i].transpose() <<endl;
+        cout<<points3DC[i].transpose() <<endl;
+        auto e = edges[i];
+        cout<<e->id() <<" error= "<<e->L2 <<endl;
+        cout<<"measurement "<<e->Measur.transpose() <<endl;
+        cout<<"calcu       "<<e-> calcu.transpose() <<endl;
+        cout<<"error       "<< ( e->Measur-e->calcu ).transpose() <<endl;
+        cout<< ( points3D[i]-rCurrent2Previous* points3DC[i] ).transpose() <<endl<<endl;
+
+        ///////////////////////////////////////////////
+        Matrix3d rotateGroundTruth;
+		Vector3d tGroundTruth( -0.0469029,-0.0283993,0.858694 );
+        rotateGroundTruth<<    0.999998 , 0.000527263 , -0.00206694,
+                          -0.000529651  ,   0.999999 , -0.00115487,
+                          0.00206632  , 0.00115596 ,    0.999997;
+        Vector2d uv0,uv1,uv2,uv3;
+        Vector3d XYZ0,XYZ1,XYZ2,XYZ3,Vb ( 1,0,0 );
+        XYZ0 = points3D[i];
+        XYZ3 = XYZ0-Vb;
+        XYZ1 = rotateGroundTruth.inverse() * ( XYZ0-tCurrent2Previous );
+        XYZ2 = XYZ1-Vb;
+        uv0 = systemPtr->camera->camera2pixel ( XYZ0 );
+        uv1 = systemPtr->camera->camera2pixel ( XYZ1 );
+        uv2 = systemPtr->camera->camera2pixel ( XYZ2 );
+        uv3 = systemPtr->camera->camera2pixel ( XYZ3 );
+        Mat img0,img3,img1,img2;//
+        cvtColor ( dataPrevious.leftImage,img0,CV_GRAY2RGB );
+        cvtColor ( dataPrevious.rightImage,img3,CV_GRAY2RGB );
+        cvtColor ( dataCurrent.leftImage,img1,CV_GRAY2RGB );
+        cvtColor ( dataCurrent.rightImage,img2,CV_GRAY2RGB );
+
+
+        cv::Scalar color0 ( 200,0,0 );
+        cv::Scalar color1 ( 0,200,0 );
+        int rcircle = 2;
+        cv::Point pl ( matches[i].point[0].u,matches[i].point[0].v ); //
+        cv::Point pr ( matches[i].point[3].u,matches[i].point[3].v );
+        cv::Point plc ( matches[i].point[1].u,matches[i].point[1].v );
+        cv::Point prc ( matches[i].point[2].u,matches[i].point[2].v );
+
+
+        cv::circle ( img0,pl,rcircle,color0 );
+        cv::circle ( img3,pr,rcircle,color0 );
+        cv::circle ( img1,plc,rcircle,color0 );
+        cv::circle ( img2,prc,rcircle,color0 );
+
+        cv::circle ( img0,cv::Point ( uv0 ( 0 ),uv0 ( 1 ) ),rcircle,color1 );
+        cv::circle ( img3,cv::Point ( uv3 ( 0 ),uv3 ( 1 ) ),rcircle,color1 );
+        cv::circle ( img1,cv::Point ( uv1 ( 0 ),uv1 ( 1 ) ),rcircle,color1 );
+        cv::circle ( img2,cv::Point ( uv2 ( 0 ),uv2 ( 1 ) ),rcircle,color1 );
+
+		cv::imshow ( "img0",img0 );
+		cv::imshow ( "img3",img3 );
+		cv::imshow ( "img1",img1 );
+		cv::imshow ( "img2",img2 );
+        cvWaitKey ( 0 );
+        ///////////////////////////////////////////////
+    }*/
+
+
 
 
 
@@ -925,7 +947,7 @@ void FeaturePointBox::NonMaximumSuppression ( int16_t* I_f1,int16_t*I_f2,vector<
     }
 }
 
-void FeaturePointBox::ComputeDiscriptors ( int16_t* sobelVer,int16_t* sobleHor,vector< Point >& points )
+void FeaturePointBox::CalcuDescriptors ( int16_t* sobelVer,int16_t* sobleHor,vector< Point >& points )
 {
     int32_t width  = systemPtr->params.width;
     int32_t height = systemPtr->params.height;
@@ -934,43 +956,203 @@ void FeaturePointBox::ComputeDiscriptors ( int16_t* sobelVer,int16_t* sobleHor,v
     int addr;
     for ( int i = 0; i<points.size(); i++ ) {
         points[i].id = i;
-        VecDescriptor temp;
+        VecDescriptor tempForMatch ;
         int u = int ( points[i].u );
         int v = int ( points[i].v );
         addr     = getAddressOffsetImage ( u,v,bpl );
+//ComputeDiscriptors for matching
+        tempForMatch[0]=abs ( * ( sobelVer+addr-1*bpl-3 ) ) +abs ( * ( sobleHor+addr-1*bpl-3 ) );
+        tempForMatch[1]=abs ( * ( sobelVer+addr-1*bpl-1 ) ) +abs ( * ( sobleHor+addr-1*bpl-1 ) );
+        tempForMatch[2]=abs ( * ( sobelVer+addr-1*bpl+1 ) ) +abs ( * ( sobleHor+addr-1*bpl+1 ) );
+        tempForMatch[3]=abs ( * ( sobelVer+addr-1*bpl+3 ) ) +abs ( * ( sobleHor+addr-1*bpl+3 ) );
+        tempForMatch[4]=abs ( * ( sobelVer+addr+1*bpl-3 ) ) +abs ( * ( sobleHor+addr+1*bpl-3 ) );
+        tempForMatch[5]=abs ( * ( sobelVer+addr+1*bpl-1 ) ) +abs ( * ( sobleHor+addr+1*bpl-1 ) );
+        tempForMatch[6]=abs ( * ( sobelVer+addr+1*bpl+1 ) ) +abs ( * ( sobleHor+addr+1*bpl+1 ) );
+        tempForMatch[7]=abs ( * ( sobelVer+addr+1*bpl+3 ) ) +abs ( * ( sobleHor+addr+1*bpl+3 ) );
 
-        temp[0]=abs ( * ( sobelVer+addr-1*bpl-3 ) ) +abs ( * ( sobelVer+addr-1*bpl-3 ) );
-        temp[1]=abs ( * ( sobelVer+addr-1*bpl-1 ) ) +abs ( * ( sobelVer+addr-1*bpl-1 ) );
-        temp[2]=abs ( * ( sobelVer+addr-1*bpl+1 ) ) +abs ( * ( sobelVer+addr-1*bpl+1 ) );
-        temp[3]=abs ( * ( sobelVer+addr-1*bpl+3 ) ) +abs ( * ( sobelVer+addr-1*bpl+3 ) );
-        temp[4]=abs ( * ( sobelVer+addr+1*bpl-3 ) ) +abs ( * ( sobelVer+addr+1*bpl-3 ) );
-        temp[5]=abs ( * ( sobelVer+addr+1*bpl-1 ) ) +abs ( * ( sobelVer+addr+1*bpl-1 ) );
-        temp[6]=abs ( * ( sobelVer+addr+1*bpl+1 ) ) +abs ( * ( sobelVer+addr+1*bpl+1 ) );
-        temp[7]=abs ( * ( sobelVer+addr+1*bpl+3 ) ) +abs ( * ( sobelVer+addr+1*bpl+3 ) );
+        tempForMatch[8]=abs ( * ( sobelVer+addr-3*bpl-5 ) ) +abs ( * ( sobleHor+addr-3*bpl-5 ) );
+        tempForMatch[9]=abs ( * ( sobelVer+addr-3*bpl-3 ) ) +abs ( * ( sobleHor+addr-3*bpl-3 ) );
+        tempForMatch[10]=abs ( * ( sobelVer+addr-3*bpl-1 ) ) +abs ( * ( sobleHor+addr-3*bpl-1 ) );
+        tempForMatch[11]=abs ( * ( sobelVer+addr-3*bpl+1 ) ) +abs ( * ( sobleHor+addr-3*bpl+1 ) );
+        tempForMatch[12]=abs ( * ( sobelVer+addr-3*bpl+3 ) ) +abs ( * ( sobleHor+addr-3*bpl+3 ) );
+        tempForMatch[13]=abs ( * ( sobelVer+addr-3*bpl+5 ) ) +abs ( * ( sobleHor+addr-3*bpl+5 ) );
+        tempForMatch[14]=abs ( * ( sobelVer+addr+3*bpl-5 ) ) +abs ( * ( sobleHor+addr+3*bpl-5 ) );
+        tempForMatch[15]=abs ( * ( sobelVer+addr+3*bpl-3 ) ) +abs ( * ( sobleHor+addr+3*bpl-3 ) );
+        tempForMatch[16]=abs ( * ( sobelVer+addr+3*bpl-1 ) ) +abs ( * ( sobleHor+addr+3*bpl-1 ) );
+        tempForMatch[17]=abs ( * ( sobelVer+addr+3*bpl+1 ) ) +abs ( * ( sobleHor+addr+3*bpl+1 ) );
+        tempForMatch[18]=abs ( * ( sobelVer+addr+3*bpl+3 ) ) +abs ( * ( sobleHor+addr+3*bpl+3 ) );
+        tempForMatch[19]=abs ( * ( sobelVer+addr+3*bpl+5 ) ) +abs ( * ( sobleHor+addr+3*bpl+5 ) );
 
-        temp[8]=abs ( * ( sobelVer+addr-3*bpl-5 ) ) +abs ( * ( sobelVer+addr-3*bpl-5 ) );
-        temp[9]=abs ( * ( sobelVer+addr-3*bpl-3 ) ) +abs ( * ( sobelVer+addr-3*bpl-3 ) );
-        temp[10]=abs ( * ( sobelVer+addr-3*bpl-1 ) ) +abs ( * ( sobelVer+addr-3*bpl-1 ) );
-        temp[11]=abs ( * ( sobelVer+addr-3*bpl+1 ) ) +abs ( * ( sobelVer+addr-3*bpl+1 ) );
-        temp[12]=abs ( * ( sobelVer+addr-3*bpl+3 ) ) +abs ( * ( sobelVer+addr-3*bpl+3 ) );
-        temp[13]=abs ( * ( sobelVer+addr-3*bpl+5 ) ) +abs ( * ( sobelVer+addr-3*bpl+5 ) );
-        temp[14]=abs ( * ( sobelVer+addr+3*bpl-5 ) ) +abs ( * ( sobelVer+addr+3*bpl-5 ) );
-        temp[15]=abs ( * ( sobelVer+addr+3*bpl-3 ) ) +abs ( * ( sobelVer+addr+3*bpl-3 ) );
-        temp[16]=abs ( * ( sobelVer+addr+3*bpl-1 ) ) +abs ( * ( sobelVer+addr+3*bpl-1 ) );
-        temp[17]=abs ( * ( sobelVer+addr+3*bpl+1 ) ) +abs ( * ( sobelVer+addr+3*bpl+1 ) );
-        temp[18]=abs ( * ( sobelVer+addr+3*bpl+3 ) ) +abs ( * ( sobelVer+addr+3*bpl+3 ) );
-        temp[19]=abs ( * ( sobelVer+addr+3*bpl+5 ) ) +abs ( * ( sobelVer+addr+3*bpl+5 ) );
+        tempForMatch[20]=abs ( * ( sobelVer+addr-5*bpl-1 ) ) +abs ( * ( sobleHor+addr-5*bpl-1 ) );
+        tempForMatch[21]=abs ( * ( sobelVer+addr-5*bpl+1 ) ) +abs ( * ( sobleHor+addr-5*bpl+1 ) );
+        tempForMatch[22]=abs ( * ( sobelVer+addr+5*bpl-1 ) ) +abs ( * ( sobleHor+addr+5*bpl-1 ) );
+        tempForMatch[23]=abs ( * ( sobelVer+addr+5*bpl+1 ) ) +abs ( * ( sobleHor+addr+5*bpl+1 ) );
 
-        temp[20]=abs ( * ( sobelVer+addr-5*bpl-1 ) ) +abs ( * ( sobelVer+addr-5*bpl-1 ) );
-        temp[21]=abs ( * ( sobelVer+addr-5*bpl+1 ) ) +abs ( * ( sobelVer+addr-5*bpl+1 ) );
-        temp[22]=abs ( * ( sobelVer+addr+5*bpl-1 ) ) +abs ( * ( sobelVer+addr+5*bpl-1 ) );
-        temp[23]=abs ( * ( sobelVer+addr+5*bpl+1 ) ) +abs ( * ( sobelVer+addr+5*bpl+1 ) );
+        tempForMatch = tempForMatch/16;
+        points[i].descriptor = tempForMatch;
 
-
-        temp = temp/16;
-        points[i].descriptor = temp;
+//         //Compute small Discriptors for refine
+//         Eigen::Matrix<int16_t,15,1> tempForRefine;
+//         tempForRefine[0]=abs ( * ( sobelVer+addr-2*bpl ) ) +abs ( * ( sobleHor+addr-2*bpl ) );
+//         tempForRefine[1]=abs ( * ( sobelVer+addr-1*bpl-2 ) ) +abs ( * ( sobleHor+addr-1*bpl-2 ) );
+//         tempForRefine[2]=abs ( * ( sobelVer+addr-1*bpl-1 ) ) +abs ( * ( sobleHor+addr-1*bpl-1 ) );
+//         tempForRefine[3]=abs ( * ( sobelVer+addr-1*bpl ) ) +abs ( * ( sobleHor+addr-1*bpl ) );
+//         tempForRefine[4]=abs ( * ( sobelVer+addr-1*bpl+1 ) ) +abs ( * ( sobleHor+addr-1*bpl+1 ) );
+//         tempForRefine[5]=abs ( * ( sobelVer+addr-1*bpl+2 ) ) +abs ( * ( sobleHor+addr-1*bpl+2 ) );
+//
+//         tempForRefine[6]=abs ( * ( sobelVer+addr-1 ) ) +abs ( * ( sobleHor+addr-1 ) );
+//         tempForRefine[7]=3*abs ( * ( sobelVer+addr ) ) +abs ( * ( sobleHor+addr ) );
+//         tempForRefine[8]=abs ( * ( sobelVer+addr+1 ) ) +abs ( * ( sobleHor+addr+1 ) );
+//
+//         tempForRefine[9]=abs ( * ( sobelVer+addr+1*bpl-2 ) ) +abs ( * ( sobleHor+addr+1*bpl-2 ) );
+//         tempForRefine[10]=abs ( * ( sobelVer+addr+1*bpl-1 ) ) +abs ( * ( sobleHor+addr+1*bpl-1 ) );
+//         tempForRefine[11]=abs ( * ( sobelVer+addr+1*bpl ) ) +abs ( * ( sobleHor+addr+1*bpl ) );
+//         tempForRefine[12]=abs ( * ( sobelVer+addr+1*bpl+1 ) ) +abs ( * ( sobleHor+addr+1*bpl+1 ) );
+//         tempForRefine[13]=abs ( * ( sobelVer+addr+1*bpl+2 ) ) +abs ( * ( sobleHor+addr+1*bpl+2 ) );
+//         tempForRefine[14]=abs ( * ( sobelVer+addr+2*bpl ) ) +abs ( * ( sobleHor+addr+2*bpl ) );
+//
+//
+//         tempForRefine = tempForRefine/16;
+//         points[i].descriptorRefine = tempForRefine;
     }
 }
 
+
+FrameData FeaturePointBox::FilterImage ( Mat leftImage, Mat rigtImage )
+{
+    FrameData dataTemp;
+    dataTemp.leftImage = leftImage;
+    dataTemp.rightImage = rigtImage;
+
+
+    Mat kernBlob = ( cv::Mat_<char> ( 5,5 ) <<
+                     -1,-1,-1,-1,-1,
+                     -1, 1, 1, 1,-1,
+                     -1, 1, 8, 1,-1,
+                     -1, 1, 1, 1,-1,
+                     -1,-1,-1,-1,-1 );
+    Mat kernCorner = ( cv::Mat_<char> ( 5,5 ) <<
+                       -1,-1, 0, 1, 1,
+                       -1,-1, 0, 1, 1,
+                       0, 0, 0, 0, 0,
+                       1, 1, 0,-1,-1,
+                       1, 1, 0,-1,-1 );
+
+    Mat kernSobelV = ( cv::Mat_<char> ( 5,5 ) <<
+                       -5,-8, -10, -8,-5,
+                       -4,-10,-20,-10,-4,
+                       0, 0,  0,  0,  0,
+                       4, 10, 20, 10, 4,
+                       5, 8,  10, 8,  5 );
+
+    Mat kernSobelH = ( cv::Mat_<char> ( 5,5 ) <<
+                       -5, -4, 0, 4, 5,
+                       -8, -10,0, 10,8,
+                       -10,-20,0, 20,10,
+                       -8, -10,0, 10,8,
+                       -5, -4, 0, 4, 5 );
+
+
+    leftImage.convertTo ( dataTemp.leftImageInt16,CV_16S );
+    rigtImage.convertTo ( dataTemp.rightImageInt16,CV_16S );
+
+    cv::filter2D ( dataTemp.leftImageInt16,dataTemp.leftBlob,-1,kernBlob );
+    cv::filter2D ( dataTemp.leftImageInt16,dataTemp.leftCorner,-1,kernCorner );
+    cv::filter2D ( dataTemp.rightImageInt16,dataTemp.rightBlob,-1,kernBlob );
+    cv::filter2D ( dataTemp.rightImageInt16,dataTemp.rightCorner,-1,kernCorner );
+
+
+    cv::filter2D ( dataTemp.leftImageInt16,dataTemp.leftSobelVer,-1,kernSobelV );
+    cv::filter2D ( dataTemp.leftImageInt16,dataTemp.leftSobelHor,-1,kernSobelH );
+    cv::filter2D ( dataTemp.rightImageInt16,dataTemp.rightSobelVer,-1,kernSobelV );
+    cv::filter2D ( dataTemp.rightImageInt16,dataTemp.RightSobelHor,-1,kernSobelH );
+
+    return dataTemp;
+
 }
+
+
+bool FeaturePointBox::ExtractFPointsFromImage ( Mat &leftImage, Mat &rigtImage )
+{
+    dataPrevious = dataCurrent;
+
+    dataCurrent = FilterImage ( leftImage,rigtImage );
+
+    int16_t* pLeftBlob = ( int16_t* ) dataCurrent.leftBlob.data;
+    int16_t* pLeftCorner = ( int16_t* ) dataCurrent.leftCorner.data;
+    int16_t* pRigtBlob = ( int16_t* ) dataCurrent.rightBlob.data;
+    int16_t* pRigtCorner = ( int16_t* ) dataCurrent.rightCorner.data;
+
+    int16_t* pLeftSobleVer = ( int16_t* ) dataCurrent.leftSobelVer.data;
+    int16_t* pLeftSobleHor = ( int16_t* ) dataCurrent.leftSobelHor.data;
+    int16_t* pRightSobleVer = ( int16_t* ) dataCurrent.rightSobelVer.data;
+    int16_t* pRightSobleHor = ( int16_t* ) dataCurrent.RightSobelHor.data;
+
+
+    //计算nms，左图，右图，fast，dense
+    NonMaximumSuppression ( pLeftBlob,pLeftCorner,dataCurrent.pointsLeftLess,10 );
+    NonMaximumSuppression ( pRigtBlob,pRigtCorner,dataCurrent.pointsRightLess,10 );
+    NonMaximumSuppression ( pLeftBlob,pLeftCorner,dataCurrent.pointsLeft,3 );
+    NonMaximumSuppression ( pRigtBlob,pRigtCorner,dataCurrent.pointsRight,3 );
+    // //#################################
+    //     for ( int i =0; i<dataCurrent.pointsLeftLess.size(); i++ ) {
+    //         cv::Point center = cv::Point ( dataCurrent.pointsLeftLess[i].u,dataCurrent.pointsLeftLess[i].v );
+    //         //参数为：承载的图像、圆心、半径、颜色、粗细、线型
+    //         cv::circle ( dataCurrent.leftImage,center,2,cv::Scalar ( 255,0,0 ) );
+    //     }
+    //     imshow ( "pointsLeftLess",dataCurrent.leftImage );
+    //
+    // 	for ( int i =0; i<dataCurrent.pointsRight.size(); i++ ) {
+    // 		cv::Point center = cv::Point ( dataCurrent.pointsRight[i].u,dataCurrent.pointsRight[i].v );
+    // 		cv::circle ( dataCurrent.rightImage,center,2,cv::Scalar ( 255,0,0 ) );
+    // 	}
+    // 	imshow ( "pointsRight",dataCurrent.rightImage );
+    // 	cvWaitKey(0);
+    // //#################################
+
+
+    //computediscriptors
+    //左图
+    CalcuDescriptors ( pLeftSobleVer,pLeftSobleHor,dataCurrent.pointsLeftLess );
+    CalcuDescriptors ( pLeftSobleVer,pLeftSobleHor,dataCurrent.pointsLeft );
+    //右图
+
+    CalcuDescriptors ( pRightSobleVer,pRightSobleHor,dataCurrent.pointsRightLess );
+    CalcuDescriptors ( pRightSobleVer,pRightSobleHor,dataCurrent.pointsRight );
+    return true;
+
+}
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

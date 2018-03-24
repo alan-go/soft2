@@ -16,6 +16,7 @@ enum FeatureType {
     CornerMin = 21,		CornerMax = 22
 };
 typedef Matrix<int16_t,24,1> VecDescriptor;
+typedef Matrix<int16_t,15,1> VecRefineDescriptor;
 class FeaturePoint
 {
 public:
@@ -37,10 +38,12 @@ public:
 };
 struct Point {
     int id;
+	int imgNum;
     float u,v;
     double strength;
     FeatureType type;
     VecDescriptor descriptor;
+	Eigen::Matrix<int16_t,15,1> descriptorRefine;
 	int binInd;
 
     Point() {}
@@ -80,7 +83,7 @@ struct FrameData {
 struct MatchFeatures {
     Point point[5];
 	MatchFeatures() {}
-	MatchFeatures ( Point p0,Point p1,Point p2,Point p3 )
+	MatchFeatures ( Point &p0,Point &p1,Point &p2,Point &p3 )
 	{
 		point[0]=p0;
 		point[1]=p1;
@@ -134,11 +137,15 @@ private:
     FrameData FilterImage ( Mat leftImage, Mat rigtImage );
     void NonMaximumSuppression ( int16_t* I_f1,int16_t*I_f2,vector<Point> &points,int32_t nms_n );
 
-    void ComputeDiscriptors ( int16_t* sobelVer,int16_t* sobleHor,vector< Point >& points );
+	VecRefineDescriptor CalcuRefineDesc(int16_t* sobelVer,int16_t* sobleHor,vector< Point >& points);
+    void CalcuDescriptors ( int16_t* sobelVer,int16_t* sobleHor,vector< Point >& points );
 
     void InitRangesForFastMatch ( bool isBegin );
     bool MatchLoop ( bool isDense );
     int Match ( Point &point1,Point &point2, vector< Point > &points2,vector<Range> &range );
+	//type: 0 is horizontal, 1 is vertal;
+	void Refine2points(Point &p0,Point &p1,int16_t* sobelVer,int16_t* sobleHor,int type);
+	void RefineToSubPixel(vector<MatchFeatures> &matches,int16_t* sobelVer,int16_t* sobleHor);
 	void UpdateRanges(vector<MatchFeatures> &matches);
 	double CacuReprojectError(MatchFeatures match,SE3 transform);
 	void CacuTransfer5pRansac(vector<MatchFeatures> &matches);

@@ -101,30 +101,29 @@ namespace SOFT
 
 
 
-
-
-
-
-
 	class EdgeXYZt: public g2o::BaseBinaryEdge<8 ,Eigen::Matrix<double,8,1>,VertexPoseT,VertexPoseT>
 	{
 	public:
 		EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 		EdgeXYZt ( Eigen::Matrix3d rotate, SOFT::Camera* camera ) : BaseBinaryEdge(),
-		rotate ( rotate ),camera ( camera ) {}
+		rotate ( rotate ),camera ( camera ) {
+			rotateGroundTruth<<    0.999998 , 0.000527263 , -0.00206694,
+			-0.000529651  ,   0.999999 , -0.00115487,
+			0.00206632  , 0.00115596 ,    0.999997;
+		}
 
 		void computeError() {
 			const VertexPoseT* vt = static_cast<const VertexPoseT*> ( _vertices[0] );
 			const VertexPoseT* vXYZ = static_cast<const VertexPoseT*> ( _vertices[1] );
 			Eigen::Vector3d t = vt->estimate();
-			Eigen::Vector3d XYZ0 = vXYZ->estimate();
+			Eigen::Vector3d XYZ0,XYZ1,XYZ2,XYZ3;
 
-			Eigen::Vector3d XYZ3 = XYZ0-Vector3d ( camera->base,0,0 );
-
-			Eigen::Vector3d XYZ1,XYZ2;
-			XYZ1 = rotate.inverse() * XYZ0-t;
-			XYZ2 = XYZ1-Vector3d ( camera->base,0,0 );
+			XYZ0 = vXYZ->estimate();
+			XYZ3 = XYZ0-vBase;
+			XYZ1 = rotate.inverse() * (XYZ0-t);
+// 			XYZ1 = rotateGroundTruth.inverse() *( XYZ0-t);
+			XYZ2 = XYZ1-vBase;
 
 			Eigen::Vector2d uv0,uv3,uv1,uv2;
 
@@ -142,6 +141,7 @@ namespace SOFT
 // 			   cout<<_error.transpose() <<endl;
 // 				cout<<t.transpose()<<endl;
 			L2 = _error.squaredNorm();
+			Measur = _measurement;
 		}
 
 		virtual bool read ( istream& in ) {}
@@ -151,7 +151,9 @@ namespace SOFT
 		Camera* camera;
 		double L2;
 		Eigen::Matrix<double,8,1> calcu;
-
+		Eigen::Vector3d vBase=Vector3d(1,0,0);
+		Eigen::Matrix3d rotateGroundTruth;
+		Eigen::Matrix<double,8,1> Measur;
 	};
 
 

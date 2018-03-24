@@ -16,7 +16,7 @@ int main ( int argc, char **argv )
     //*************************//
 	cout<<Eigen::Matrix<double,8,8>::Identity()<<endl;
 
-
+/*
     Eigen::Vector3d a,b,t;
     Eigen::Matrix3d R;
     R<<1,2,3,2,1,2,3,2,1;
@@ -34,7 +34,9 @@ int main ( int argc, char **argv )
     test <<2,1,6;
     cout<<test<<endl;
 	cout<<test.lpNorm<1>() <<endl;
-	cout<<test.squaredNorm() <<endl;
+	cout<<test.squaredNorm() <<endl;*/
+
+
 
     //**************************//
 
@@ -57,13 +59,13 @@ int main ( int argc, char **argv )
     vTimesTrack.resize ( nImages );
 
     SOFT::System SLAM ( 1 );
-    SLAM.loadPoses ( string ( argv[1] ) +"/00.txt" );
-    //##################
-    //draw 2d map from ground truth
-    Mat map2D ( 1000, 1000, CV_8UC3, cv::Scalar ( 0, 0, 0 ) );
-    map2D=0;
-// 	for(int i=0;i<100;i++)
-// // 	for(int i=0;i<SLAM.poses.size();i++)
+	SLAM.loadPoses ( string ( "/media/alan/Temp/sequence00/poses/10.txt" ));
+//     //##################
+//     //draw 2d map from ground truth
+//     Mat map2D ( 1000, 1000, CV_8UC3, cv::Scalar ( 0, 0, 0 ) );
+//     map2D=0;
+// // 	for(int i=0;i<2000;i++)
+// 	for(int i=0;i<SLAM.poses.size();i++)
 // 	{
 //
 // 		Matrix<double,3,4> T = SLAM.poses[i];
@@ -73,12 +75,13 @@ int main ( int argc, char **argv )
 // 		cout<<T<<endl;
 // 		cout<<R.inverse()*Rnext<<endl;
 // 		cout<<Tnext(0,3)-T(0,3)<<"\t"<<Tnext(1,3)-T(1,3)<<"\t"<<Tnext(2,3)-T(2,3)<<endl<<endl;;
-// // 		cv::Point pt(500+T(0,3),700-T(2,3));
-// // 		cv::circle(map2D,pt,1,cv::Scalar(200, 100, 0));
-// // 		cv::imshow("map",map2D);
-// // 		cvWaitKey(1);
+// 		cv::Point pt(500+T(0,3),500-T(2,3));
+// 		cv::circle(map2D,pt,1,cv::Scalar(200, 100, 0));
+// 		cv::imshow("map",map2D);
+// 		cvWaitKey(1);
 // 	}
-    //##################
+// 	cv::imwrite("/media/alan/Temp/sequence00/poses/10.jpg",map2D);
+//     //##################
 
     cv::Mat imLeft, imRight;
     for ( int ni=0; ni<nImages; ni++ ) {
