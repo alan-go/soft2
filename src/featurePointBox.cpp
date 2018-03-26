@@ -60,10 +60,10 @@ bool FeaturePointBox::FeatureProcess ( int frameNumber )
 
     //77777777777777777777777777777777777777777
 MatchFeatures  matchtemp = matchFast[0];
-cout<<matchtemp.point[0].u<<endl;
-matchtemp.point[4].u = 10;
-cout<<matchtemp.point[0].u<<endl;
-cout<<matchFast[0].point[0].u<<endl;
+cout<<matchtemp.ppoints[0]->u<<endl;
+matchtemp.ppoints[4]->u = 10;
+cout<<matchtemp.ppoints[0]->u<<endl;
+cout<<matchFast[0].ppoints[0]->u<<endl;
 
     //77777777777777777777777777777777777777777
     //refine
@@ -116,22 +116,21 @@ void FeaturePointBox::RefineToSubPixel ( vector< MatchFeatures >& matches, int16
 	int16_t* pRightSobleHor = ( int16_t* ) dataCurrent.RightSobelHor.data;
 	for(int i=0;i<matches.size();i++)
 	{
-		Refine2points(matches[i].point[0],matches[i].point[1],);
 
 	}
 }
 
 
 
-double FeaturePointBox::CacuNCC ( Point point0, Point point1, cv::Mat img0, cv::Mat img1 )
+double FeaturePointBox::CacuNCC ( Point *point0, Point *point1, cv::Mat &img0, cv::Mat &img1 )
 {
     int size =16;
     double result;
     Matrix<int16_t,16,16> v0,v1;
 // 	Matrix<double,256,1> vd0,vd1;
 
-    cv::Mat piece0 = img0 ( cv::Rect ( point0.u-7,point0.v-7,16,16 ) );
-    cv::Mat piece1 = img1 ( cv::Rect ( point1.u-7,point1.v-7,16,16 ) );
+	cv::Mat piece0 = img0 ( cv::Rect ( point0->u-7,point0->v-7,16,16 ) );
+	cv::Mat piece1 = img1 ( cv::Rect ( point1->u-7,point1->v-7,16,16 ) );
     cv::cv2eigen ( piece0,v0 );
     cv::cv2eigen ( piece1,v1 );
 
@@ -151,38 +150,38 @@ double FeaturePointBox::CacuNCC ( Point point0, Point point1, cv::Mat img0, cv::
 bool FeaturePointBox::MatchLoop ( bool isDense )
 {
     double tmep;
-    vector<MatchFeatures> matches;
-    Point point1,point2,point3,point00;
+    vector<MatchFeatures> matchesTemp;
+    Point *ppoint1,*ppoint2,*ppoint3,*ppoint00;
     if ( isDense ) {
         for ( int i=0; i<dataPrevious.pointsLeft.size(); i++ ) {
-            Point point0 = dataPrevious.pointsLeft[i];
-            if ( Match ( point0,point1, dataCurrent.pointsLeft,rangesAll[0] ) < matchSADThreshold )
-                if ( CacuNCC ( point0,point1,dataPrevious.leftImageInt16,dataCurrent.leftImageInt16 ) >NCCThreshold )
-                    if ( Match ( point1,point2, dataCurrent.pointsRight,rangesAll[1] ) <matchSADThreshold )
-                        if ( Match ( point2,point3, dataPrevious.pointsRight,rangesAll[2] ) <matchSADThreshold )
-                            if ( Match ( point3,point00, dataPrevious.pointsLeft,rangesAll[3] ) <matchSADThreshold )
-                                if ( point00.id==point0.id ) {
-                                    matches.push_back ( MatchFeatures ( point0,point1,point2,point3 ) );
+            Point *point0 = &(dataPrevious.pointsLeft[i]);
+            if ( Match ( point0,ppoint1, dataCurrent.pointsLeft,rangesAll[0] ) < matchSADThreshold )
+                if ( CacuNCC ( point0,ppoint1,dataPrevious.leftImageInt16,dataCurrent.leftImageInt16 ) >NCCThreshold )
+                    if ( Match ( ppoint1,ppoint2, dataCurrent.pointsRight,rangesAll[1] ) <matchSADThreshold )
+                        if ( Match ( ppoint2,ppoint3, dataPrevious.pointsRight,rangesAll[2] ) <matchSADThreshold )
+                            if ( Match ( ppoint3,ppoint00, dataPrevious.pointsLeft,rangesAll[3] ) <matchSADThreshold )
+                                if ( ppoint00->id==point0->id ) {
+                                    matchesTemp.push_back ( MatchFeatures ( point0,ppoint1,ppoint2,ppoint3 ) );
                                 }
         }
-        matchDense = matches;
+        matchDense = matchesTemp;
     } else {
         for ( int i=0; i<dataPrevious.pointsLeftLess.size(); i++ ) {
-            Point point0 = dataPrevious.pointsLeftLess[i];
-            if ( Match ( point0,point1,dataCurrent.pointsLeftLess,rangesAll[0] ) < matchSADThreshold )
-                if ( CacuNCC ( point0,point1,dataPrevious.leftImageInt16,dataCurrent.leftImageInt16 ) > NCCThreshold )
-                    if ( Match ( point1,point2,dataCurrent.pointsRightLess,rangesAll[1] ) < matchSADThreshold )
-                        if ( Match ( point2,point3,dataPrevious.pointsRightLess,rangesAll[2] ) < matchSADThreshold )
-                            if ( Match ( point3,point00,dataPrevious.pointsLeftLess,rangesAll[3] ) < matchSADThreshold )
-                                if ( point00.id==point0.id ) {
-                                    matches.push_back ( MatchFeatures ( point0,point1,point2,point3 ) );
+            Point *point0 = &(dataPrevious.pointsLeftLess[i]);
+            if ( Match ( point0,ppoint1,dataCurrent.pointsLeftLess,rangesAll[0] ) < matchSADThreshold )
+                if ( CacuNCC ( point0,ppoint1,dataPrevious.leftImageInt16,dataCurrent.leftImageInt16 ) > NCCThreshold )
+                    if ( Match ( ppoint1,ppoint2,dataCurrent.pointsRightLess,rangesAll[1] ) < matchSADThreshold )
+                        if ( Match ( ppoint2,ppoint3,dataPrevious.pointsRightLess,rangesAll[2] ) < matchSADThreshold )
+                            if ( Match ( ppoint3,ppoint00,dataPrevious.pointsLeftLess,rangesAll[3] ) < matchSADThreshold )
+                                if ( ppoint00->id==point0->id ) {
+                                    matchesTemp.push_back ( MatchFeatures ( point0,ppoint1,ppoint2,ppoint3 ) );
                                 }
         }
-        matchFast = matches;
+        matchFast = matchesTemp;
     }
 
-    if ( matches.size() >5 ) {
-        UpdateRanges ( matches );
+    if ( matchesTemp.size() >5 ) {
+        UpdateRanges ( matchesTemp );
         return true;
     } else {
         return false;
@@ -194,10 +193,10 @@ double FeaturePointBox::CacuReprojectError ( MatchFeatures match, SE3 transform 
     float cu = systemPtr->camera->cx_;
     float cv = systemPtr->camera->cy_;
     float base = systemPtr->camera->base;
-    float uLp = match.point[0].u;
-    float vLp = match.point[0].v;
-    float uRp = match.point[3].u;
-    float vRp = match.point[3].v;
+    float uLp = match.ppoints[0]->u;
+    float vLp = match.ppoints[0]->v;
+    float uRp = match.ppoints[3]->u;
+    float vRp = match.ppoints[3]->v;
 
     double d = max ( uLp - uRp,0.0001f );
     double x = ( uLp-cu ) *base/d;
@@ -205,12 +204,12 @@ double FeaturePointBox::CacuReprojectError ( MatchFeatures match, SE3 transform 
     double z = focal_*base/d;
     Vector3d point3D ( x,y,z );
 
-    SOFT::Point pLObserve = match.point[1];
-    SOFT::Point pRObserve = match.point[2];
+    SOFT::Point* pLObserve = match.ppoints[1];
+    SOFT::Point* pRObserve = match.ppoints[2];
     Vector2d pLPredict = systemPtr->camera->world2pixel ( point3D,transform );
     Vector2d pRPredict = systemPtr->camera->world2pixel ( point3D-Vector3d ( base,0,0 ),transform );
 
-    Vector4d resV ( pLObserve.u-pLPredict ( 0 ),pLObserve.v-pLPredict ( 1 ),pRObserve.u-pRPredict ( 0 ),pRObserve.v-pRPredict ( 1 ) );
+    Vector4d resV ( pLObserve->u-pLPredict ( 0 ),pLObserve->v-pLPredict ( 1 ),pRObserve->u-pRPredict ( 0 ),pRObserve->v-pRPredict ( 1 ) );
 
     return resV.lpNorm<1>();
 }
@@ -224,8 +223,8 @@ void FeaturePointBox::CacuTransfer5pRansac ( vector< MatchFeatures >& matches )
 
     for ( int n =0; n<matches.size(); n++ ) {
         for ( int ind =0; ind<4; ind++ ) {
-            cvPoint[ind][n].x=matches[n].point[ind].u;
-            cvPoint[ind][n].y=matches[n].point[ind].v;
+            cvPoint[ind][n].x=matches[n].ppoints[ind]->u;
+			cvPoint[ind][n].y=matches[n].ppoints[ind]->v;
         }
     }
 
@@ -267,10 +266,10 @@ void FeaturePointBox::CacuTransfer5pRansac ( vector< MatchFeatures >& matches )
     cv::RNG rng ( time ( 0 ) );
 
     for ( int n =0; n<matches.size(); n++ ) {
-        float uLp = matches[n].point[0].u;
-        float vLp = matches[n].point[0].v;
-        float uRp = matches[n].point[3].u;
-        float vRp = matches[n].point[3].v;
+		float uLp = matches[n].ppoints[0]->u;
+		float vLp = matches[n].ppoints[0]->v;
+		float uRp = matches[n].ppoints[3]->u;
+		float vRp = matches[n].ppoints[3]->v;
 
         double d = max ( uLp - uRp,0.0001f );
         double x = ( uLp-cu ) *base/d;
@@ -281,10 +280,10 @@ void FeaturePointBox::CacuTransfer5pRansac ( vector< MatchFeatures >& matches )
     }
 
     for ( int n =0; n<matches.size(); n++ ) {
-        float uLp = matches[n].point[1].u;
-        float vLp = matches[n].point[1].v;
-        float uRp = matches[n].point[2].u;
-        float vRp = matches[n].point[2].v;
+		float uLp = matches[n].ppoints[1]->u;
+		float vLp = matches[n].ppoints[1]->v;
+		float uRp = matches[n].ppoints[2]->u;
+		float vRp = matches[n].ppoints[2]->v;
 
         double d = max ( uLp - uRp,0.0001f );
         double x = ( uLp-cu ) *base/d;
@@ -412,13 +411,13 @@ void FeaturePointBox::CacuTransfer5pRansac ( vector< MatchFeatures >& matches )
         edge->setVertex ( 0, poset );
         edge->setVertex ( 1, xyz );
 
-        SOFT::Point p0 = matches[ind].point[0];
-        SOFT::Point p1 = matches[ind].point[1];
-        SOFT::Point p2 = matches[ind].point[2];
-        SOFT::Point p3 = matches[ind].point[3];
+		SOFT::Point *p0 = matches[ind].ppoints[0];
+		SOFT::Point *p1 = matches[ind].ppoints[1];
+		SOFT::Point *p2 = matches[ind].ppoints[2];
+		SOFT::Point *p3 = matches[ind].ppoints[3];
 
         Matrix<double,8,1> observe;
-        observe<< p0.u,p0.v,p1.u,p1.v,p2.u,p2.v,p3.u,p3.v;
+        observe<< p0->u,p0->v,p1->u,p1->v,p2->u,p2->v,p3->u,p3->v;
         edge->setMeasurement ( observe );
         // 信息矩阵：协方差矩阵之逆
         edge->setInformation ( Matrix<double,8,8>::Identity() *10 );
@@ -758,7 +757,7 @@ void FeaturePointBox::UpdateRanges ( vector< MatchFeatures >& matches )
     for ( int ind=0; ind<matches.size(); ind++ ) {
         MatchFeatures match = matches[ind];
         for ( int i=0; i<4; i++ ) {
-            int rangeId = match.point[i].binInd;
+            int rangeId = match.ppoints[i]->binInd;
             Range temp = rangesAll[i][rangeId];
             if ( temp.pointsNumber==0 ) {
                 temp.umax=0;
@@ -766,8 +765,8 @@ void FeaturePointBox::UpdateRanges ( vector< MatchFeatures >& matches )
                 temp.vmax=0;
                 temp.vmin=0;
             }
-            int uMinus = int ( match.point[i+1].u-match.point[i].u );
-            int vMinus = int ( match.point[i+1].v-match.point[i].v );
+            int uMinus = int ( match.ppoints[i+1]->u-match.ppoints[i]->u );
+            int vMinus = int ( match.ppoints[i+1]->v-match.ppoints[i]->v );
             if ( uMinus<temp.umin ) {
                 temp.umin=uMinus;
             }
@@ -786,33 +785,33 @@ void FeaturePointBox::UpdateRanges ( vector< MatchFeatures >& matches )
 }
 
 //从points2中找出point1 的匹配点,记录在point2 中,
-int FeaturePointBox::Match ( Point &point1,Point &point2, vector< Point > &points2, vector< Range > &range )
+int FeaturePointBox::Match ( Point *&ppoint1,Point *&ppoint2, vector< Point > &points2, vector< Range > &range )
 {
     //find range
-    int u1 = int ( point1.u );
-    int v1 = int ( point1.v );
+    int u1 = int ( ppoint1->u );
+    int v1 = int ( ppoint1->v );
     int binu = ceil ( u1/binScale );
     int binv = ceil ( v1/binScale );
     int binInd = binWidth* ( binv-1 ) +binu-1;
     Range rangeTemp = range[binInd];
-    point1.binInd = binInd;
+    ppoint1->binInd = binInd;
 
-    int uleft = point1.u+rangeTemp.umin;
-    int uright = point1.u+rangeTemp.umax;
-    int vleft = point1.v+rangeTemp.vmin;
-    int vright = point1.v+rangeTemp.vmax;
+    int uleft = ppoint1->u+rangeTemp.umin;
+    int uright = ppoint1->u+rangeTemp.umax;
+    int vleft = ppoint1->v+rangeTemp.vmin;
+    int vright = ppoint1->v+rangeTemp.vmax;
 
     int SADmin = 1000000;
     VecDescriptor vMinus;
 
     for ( int i = 0; i<points2.size(); i++ ) {
         int u = points2[i].u,v = points2[i].v;
-        if ( point1.type==points2[i].type && u>=uleft&&u<=uright&&v>=vleft&&v<=vright ) {
-            vMinus = points2[i].descriptor-point1.descriptor;
+        if ( ppoint1->type==points2[i].type && u>=uleft&&u<=uright&&v>=vleft&&v<=vright ) {
+            vMinus = points2[i].descriptor-ppoint1->descriptor;
             int SAD = vMinus.lpNorm<1>();
             if ( SAD<SADmin ) {
                 SADmin = SAD;
-                point2 = points2[i];
+                ppoint2 = &(points2[i]);
             }
         }
     }

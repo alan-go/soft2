@@ -81,15 +81,15 @@ struct FrameData {
 
 //0:previousLeft; 1:currentLeft; 2:currentright; 3:previousright
 struct MatchFeatures {
-    Point point[5];
+    Point* ppoints[5];
 	MatchFeatures() {}
-	MatchFeatures ( Point &p0,Point &p1,Point &p2,Point &p3 )
+	MatchFeatures ( Point *p0,Point *p1,Point *p2,Point *p3 )
 	{
-		point[0]=p0;
-		point[1]=p1;
-		point[2]=p2;
-		point[3]=p3;
-		point[4]=p0;
+		ppoints[0]=p0;
+		ppoints[1]=p1;
+		ppoints[2]=p2;
+		ppoints[3]=p3;
+		ppoints[4]=p0;
 	}
 
 };
@@ -142,14 +142,14 @@ private:
 
     void InitRangesForFastMatch ( bool isBegin );
     bool MatchLoop ( bool isDense );
-    int Match ( Point &point1,Point &point2, vector< Point > &points2,vector<Range> &range );
+    int Match ( Point *&point1,Point *&point2, vector< Point > &points2,vector<Range> &range );
 	//type: 0 is horizontal, 1 is vertal;
-	void Refine2points(Point &p0,Point &p1,int16_t* sobelVer,int16_t* sobleHor,int type);
+	void Refine2points(Point *p0,Point *p1,int16_t* sobelVer,int16_t* sobleHor,int type);
 	void RefineToSubPixel(vector<MatchFeatures> &matches,int16_t* sobelVer,int16_t* sobleHor);
 	void UpdateRanges(vector<MatchFeatures> &matches);
 	double CacuReprojectError(MatchFeatures match,SE3 transform);
 	void CacuTransfer5pRansac(vector<MatchFeatures> &matches);
-	double CacuNCC(Point point0,Point point1,cv::Mat img0,cv::Mat img1);
+	double CacuNCC(Point *point0,Point *point1,cv::Mat &img0,cv::Mat &img1);
 
 public:
     FeaturePointBox ( System* pt );
