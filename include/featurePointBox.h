@@ -45,7 +45,7 @@ struct Point {
     VecDescriptor descriptor;
 	Eigen::Matrix<int16_t,15,1> descriptorRefine;
 	int binInd;
-
+	int16_t* sobelV, *sobelH;
     Point() {}
     Point ( double u,double v,double strength,FeatureType type ) :
         u ( u ),v ( v ),strength ( strength ),type ( type ) {}
@@ -137,15 +137,15 @@ private:
     FrameData FilterImage ( Mat leftImage, Mat rigtImage );
     void NonMaximumSuppression ( int16_t* I_f1,int16_t*I_f2,vector<Point> &points,int32_t nms_n );
 
-	VecRefineDescriptor CalcuRefineDesc(int16_t* sobelVer,int16_t* sobleHor,vector< Point >& points);
+	VecRefineDescriptor CalcuRefineDesc(double u,double v,int16_t* sobelVer,int16_t* sobleHor);
     void CalcuDescriptors ( int16_t* sobelVer,int16_t* sobleHor,vector< Point >& points );
 
     void InitRangesForFastMatch ( bool isBegin );
     bool MatchLoop ( bool isDense );
     int Match ( Point *&point1,Point *&point2, vector< Point > &points2,vector<Range> &range );
 	//type: 0 is horizontal, 1 is vertal;
-	void Refine2points(Point *p0,Point *p1,int16_t* sobelVer,int16_t* sobleHor,int type);
-	void RefineToSubPixel(vector<MatchFeatures> &matches,int16_t* sobelVer,int16_t* sobleHor);
+	void RefineToSubPixel(vector<MatchFeatures> &matches);
+	void CalcuFitPatch(Point* p0,Point* pi,vector<double> &fitPatch);
 	void UpdateRanges(vector<MatchFeatures> &matches);
 	double CacuReprojectError(MatchFeatures match,SE3 transform);
 	void CacuTransfer5pRansac(vector<MatchFeatures> &matches);

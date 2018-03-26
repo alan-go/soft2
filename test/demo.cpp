@@ -14,7 +14,7 @@ void LoadImages ( const string &strPathToSequence, vector<string> &vstrImageLeft
 int main ( int argc, char **argv )
 {
     //*************************//
-	cout<<Eigen::Matrix<double,8,8>::Identity()<<endl;
+	cout<<Eigen::Matrix<double,8,2>::Zero();
 
 /*
     Eigen::Vector3d a,b,t;
@@ -35,6 +35,7 @@ int main ( int argc, char **argv )
     cout<<test<<endl;
 	cout<<test.lpNorm<1>() <<endl;
 	cout<<test.squaredNorm() <<endl;*/
+
 
 
 

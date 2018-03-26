@@ -59,11 +59,11 @@ bool FeaturePointBox::FeatureProcess ( int frameNumber )
 
 
     //77777777777777777777777777777777777777777
-MatchFeatures  matchtemp = matchFast[0];
-cout<<matchtemp.ppoints[0]->u<<endl;
-matchtemp.ppoints[4]->u = 10;
-cout<<matchtemp.ppoints[0]->u<<endl;
-cout<<matchFast[0].ppoints[0]->u<<endl;
+    MatchFeatures  matchtemp = matchFast[0];
+    cout<<matchtemp.ppoints[0]->u<<endl;
+    matchtemp.ppoints[4]->u = 10;
+    cout<<matchtemp.ppoints[0]->u<<endl;
+    cout<<matchFast[0].ppoints[0]->u<<endl;
 
     //77777777777777777777777777777777777777777
     //refine
@@ -108,17 +108,30 @@ void FeaturePointBox::InitRangesForFastMatch ( bool isBegin )
     }
 }
 
-void FeaturePointBox::RefineToSubPixel ( vector< MatchFeatures >& matches, int16_t* sobelVer, int16_t* sobleHor )
+void FeaturePointBox::RefineToSubPixel ( vector< MatchFeatures >& matches )
 {
-	int16_t* pLeftSobleVer = ( int16_t* ) dataCurrent.leftSobelVer.data;
-	int16_t* pLeftSobleHor = ( int16_t* ) dataCurrent.leftSobelHor.data;
-	int16_t* pRightSobleVer = ( int16_t* ) dataCurrent.rightSobelVer.data;
-	int16_t* pRightSobleHor = ( int16_t* ) dataCurrent.RightSobelHor.data;
-	for(int i=0;i<matches.size();i++)
-	{
+    for ( int i=0; i<matches.size(); i++ ) {
+		Point *point0 = matches[i].ppoints[0];
+// 		CalcuRefineDesc(u,v,soV,soH)
+        for ( int ii = 1; ii<4; ii++ ) {
+            Point *pointii = matches[i].ppoints[ii];
+// 			CalcuRefineDesc(pointii)
+			vector<double> fitPatch;
+			Matrix<double,13,1> fitPatch::Zero();
 
-	}
+			CalcuFitPatch(point0,pointii,fitPatch);
+
+			Matrix<double,13,6> X::Zero();
+			//qqXi
+        }
+    }
 }
+
+void FeaturePointBox::CalcuFitPatch ( Point* p0, Point* pi, Matrix<double,13,1> fitPatc )
+{
+
+}
+
 
 
 
@@ -129,8 +142,8 @@ double FeaturePointBox::CacuNCC ( Point *point0, Point *point1, cv::Mat &img0, c
     Matrix<int16_t,16,16> v0,v1;
 // 	Matrix<double,256,1> vd0,vd1;
 
-	cv::Mat piece0 = img0 ( cv::Rect ( point0->u-7,point0->v-7,16,16 ) );
-	cv::Mat piece1 = img1 ( cv::Rect ( point1->u-7,point1->v-7,16,16 ) );
+    cv::Mat piece0 = img0 ( cv::Rect ( point0->u-7,point0->v-7,16,16 ) );
+    cv::Mat piece1 = img1 ( cv::Rect ( point1->u-7,point1->v-7,16,16 ) );
     cv::cv2eigen ( piece0,v0 );
     cv::cv2eigen ( piece1,v1 );
 
@@ -154,7 +167,7 @@ bool FeaturePointBox::MatchLoop ( bool isDense )
     Point *ppoint1,*ppoint2,*ppoint3,*ppoint00;
     if ( isDense ) {
         for ( int i=0; i<dataPrevious.pointsLeft.size(); i++ ) {
-            Point *point0 = &(dataPrevious.pointsLeft[i]);
+            Point *point0 = & ( dataPrevious.pointsLeft[i] );
             if ( Match ( point0,ppoint1, dataCurrent.pointsLeft,rangesAll[0] ) < matchSADThreshold )
                 if ( CacuNCC ( point0,ppoint1,dataPrevious.leftImageInt16,dataCurrent.leftImageInt16 ) >NCCThreshold )
                     if ( Match ( ppoint1,ppoint2, dataCurrent.pointsRight,rangesAll[1] ) <matchSADThreshold )
@@ -167,7 +180,7 @@ bool FeaturePointBox::MatchLoop ( bool isDense )
         matchDense = matchesTemp;
     } else {
         for ( int i=0; i<dataPrevious.pointsLeftLess.size(); i++ ) {
-            Point *point0 = &(dataPrevious.pointsLeftLess[i]);
+            Point *point0 = & ( dataPrevious.pointsLeftLess[i] );
             if ( Match ( point0,ppoint1,dataCurrent.pointsLeftLess,rangesAll[0] ) < matchSADThreshold )
                 if ( CacuNCC ( point0,ppoint1,dataPrevious.leftImageInt16,dataCurrent.leftImageInt16 ) > NCCThreshold )
                     if ( Match ( ppoint1,ppoint2,dataCurrent.pointsRightLess,rangesAll[1] ) < matchSADThreshold )
@@ -224,7 +237,7 @@ void FeaturePointBox::CacuTransfer5pRansac ( vector< MatchFeatures >& matches )
     for ( int n =0; n<matches.size(); n++ ) {
         for ( int ind =0; ind<4; ind++ ) {
             cvPoint[ind][n].x=matches[n].ppoints[ind]->u;
-			cvPoint[ind][n].y=matches[n].ppoints[ind]->v;
+            cvPoint[ind][n].y=matches[n].ppoints[ind]->v;
         }
     }
 
@@ -266,10 +279,10 @@ void FeaturePointBox::CacuTransfer5pRansac ( vector< MatchFeatures >& matches )
     cv::RNG rng ( time ( 0 ) );
 
     for ( int n =0; n<matches.size(); n++ ) {
-		float uLp = matches[n].ppoints[0]->u;
-		float vLp = matches[n].ppoints[0]->v;
-		float uRp = matches[n].ppoints[3]->u;
-		float vRp = matches[n].ppoints[3]->v;
+        float uLp = matches[n].ppoints[0]->u;
+        float vLp = matches[n].ppoints[0]->v;
+        float uRp = matches[n].ppoints[3]->u;
+        float vRp = matches[n].ppoints[3]->v;
 
         double d = max ( uLp - uRp,0.0001f );
         double x = ( uLp-cu ) *base/d;
@@ -280,10 +293,10 @@ void FeaturePointBox::CacuTransfer5pRansac ( vector< MatchFeatures >& matches )
     }
 
     for ( int n =0; n<matches.size(); n++ ) {
-		float uLp = matches[n].ppoints[1]->u;
-		float vLp = matches[n].ppoints[1]->v;
-		float uRp = matches[n].ppoints[2]->u;
-		float vRp = matches[n].ppoints[2]->v;
+        float uLp = matches[n].ppoints[1]->u;
+        float vLp = matches[n].ppoints[1]->v;
+        float uRp = matches[n].ppoints[2]->u;
+        float vRp = matches[n].ppoints[2]->v;
 
         double d = max ( uLp - uRp,0.0001f );
         double x = ( uLp-cu ) *base/d;
@@ -411,10 +424,10 @@ void FeaturePointBox::CacuTransfer5pRansac ( vector< MatchFeatures >& matches )
         edge->setVertex ( 0, poset );
         edge->setVertex ( 1, xyz );
 
-		SOFT::Point *p0 = matches[ind].ppoints[0];
-		SOFT::Point *p1 = matches[ind].ppoints[1];
-		SOFT::Point *p2 = matches[ind].ppoints[2];
-		SOFT::Point *p3 = matches[ind].ppoints[3];
+        SOFT::Point *p0 = matches[ind].ppoints[0];
+        SOFT::Point *p1 = matches[ind].ppoints[1];
+        SOFT::Point *p2 = matches[ind].ppoints[2];
+        SOFT::Point *p3 = matches[ind].ppoints[3];
 
         Matrix<double,8,1> observe;
         observe<< p0->u,p0->v,p1->u,p1->v,p2->u,p2->v,p3->u,p3->v;
@@ -507,7 +520,7 @@ void FeaturePointBox::CacuTransfer5pRansac ( vector< MatchFeatures >& matches )
 //     }
 
 
- ////***********//
+////***********//
     rCurrent2Word = rCurrent2Previous*rCurrent2Word;
 
     tCurrent2Word+=rCurrent2Word*tCurrent2Previous;
@@ -518,85 +531,85 @@ void FeaturePointBox::CacuTransfer5pRansac ( vector< MatchFeatures >& matches )
     cv::imshow ( "map",map2D );
 
     cvWaitKey ( 1 );
-   cv::imwrite ( "map.jpg",map2D );
+    cv::imwrite ( "map.jpg",map2D );
 
- ////***********//
-
-
+////***********//
 
 
 
 
-/*
-
-    cout<<"match num select"<<matcheSelect1st.size() <<endl;
-    //看关键点
-    for ( int n=0; n<matcheSelect1st.size(); n++ ) {
-        int i = matcheSelect1st[n];
-        Point point0 = matches[i].point[0];
-        Point point1 = matches[i].point[1];
-        Point point2 = matches[i].point[2];
-        Point point3 = matches[i].point[3];
-        cout<<point0.u<<" "<<point0.v<<" "<<point3.u<<" "<<point3.v<<endl;
-        cout<<point1.u<<" "<<point1.v<<" "<<point2.u<<" "<<point2.v<<endl;
-        cout<<points3D[i].transpose() <<endl;
-        cout<<points3DC[i].transpose() <<endl;
-        auto e = edges[i];
-        cout<<e->id() <<" error= "<<e->L2 <<endl;
-        cout<<"measurement "<<e->Measur.transpose() <<endl;
-        cout<<"calcu       "<<e-> calcu.transpose() <<endl;
-        cout<<"error       "<< ( e->Measur-e->calcu ).transpose() <<endl;
-        cout<< ( points3D[i]-rCurrent2Previous* points3DC[i] ).transpose() <<endl<<endl;
-
-        ///////////////////////////////////////////////
-        Matrix3d rotateGroundTruth;
-		Vector3d tGroundTruth( -0.0469029,-0.0283993,0.858694 );
-        rotateGroundTruth<<    0.999998 , 0.000527263 , -0.00206694,
-                          -0.000529651  ,   0.999999 , -0.00115487,
-                          0.00206632  , 0.00115596 ,    0.999997;
-        Vector2d uv0,uv1,uv2,uv3;
-        Vector3d XYZ0,XYZ1,XYZ2,XYZ3,Vb ( 1,0,0 );
-        XYZ0 = points3D[i];
-        XYZ3 = XYZ0-Vb;
-        XYZ1 = rotateGroundTruth.inverse() * ( XYZ0-tCurrent2Previous );
-        XYZ2 = XYZ1-Vb;
-        uv0 = systemPtr->camera->camera2pixel ( XYZ0 );
-        uv1 = systemPtr->camera->camera2pixel ( XYZ1 );
-        uv2 = systemPtr->camera->camera2pixel ( XYZ2 );
-        uv3 = systemPtr->camera->camera2pixel ( XYZ3 );
-        Mat img0,img3,img1,img2;//
-        cvtColor ( dataPrevious.leftImage,img0,CV_GRAY2RGB );
-        cvtColor ( dataPrevious.rightImage,img3,CV_GRAY2RGB );
-        cvtColor ( dataCurrent.leftImage,img1,CV_GRAY2RGB );
-        cvtColor ( dataCurrent.rightImage,img2,CV_GRAY2RGB );
 
 
-        cv::Scalar color0 ( 200,0,0 );
-        cv::Scalar color1 ( 0,200,0 );
-        int rcircle = 2;
-        cv::Point pl ( matches[i].point[0].u,matches[i].point[0].v ); //
-        cv::Point pr ( matches[i].point[3].u,matches[i].point[3].v );
-        cv::Point plc ( matches[i].point[1].u,matches[i].point[1].v );
-        cv::Point prc ( matches[i].point[2].u,matches[i].point[2].v );
+    /*
+
+        cout<<"match num select"<<matcheSelect1st.size() <<endl;
+        //看关键点
+        for ( int n=0; n<matcheSelect1st.size(); n++ ) {
+            int i = matcheSelect1st[n];
+            Point point0 = matches[i].point[0];
+            Point point1 = matches[i].point[1];
+            Point point2 = matches[i].point[2];
+            Point point3 = matches[i].point[3];
+            cout<<point0.u<<" "<<point0.v<<" "<<point3.u<<" "<<point3.v<<endl;
+            cout<<point1.u<<" "<<point1.v<<" "<<point2.u<<" "<<point2.v<<endl;
+            cout<<points3D[i].transpose() <<endl;
+            cout<<points3DC[i].transpose() <<endl;
+            auto e = edges[i];
+            cout<<e->id() <<" error= "<<e->L2 <<endl;
+            cout<<"measurement "<<e->Measur.transpose() <<endl;
+            cout<<"calcu       "<<e-> calcu.transpose() <<endl;
+            cout<<"error       "<< ( e->Measur-e->calcu ).transpose() <<endl;
+            cout<< ( points3D[i]-rCurrent2Previous* points3DC[i] ).transpose() <<endl<<endl;
+
+            ///////////////////////////////////////////////
+            Matrix3d rotateGroundTruth;
+    		Vector3d tGroundTruth( -0.0469029,-0.0283993,0.858694 );
+            rotateGroundTruth<<    0.999998 , 0.000527263 , -0.00206694,
+                              -0.000529651  ,   0.999999 , -0.00115487,
+                              0.00206632  , 0.00115596 ,    0.999997;
+            Vector2d uv0,uv1,uv2,uv3;
+            Vector3d XYZ0,XYZ1,XYZ2,XYZ3,Vb ( 1,0,0 );
+            XYZ0 = points3D[i];
+            XYZ3 = XYZ0-Vb;
+            XYZ1 = rotateGroundTruth.inverse() * ( XYZ0-tCurrent2Previous );
+            XYZ2 = XYZ1-Vb;
+            uv0 = systemPtr->camera->camera2pixel ( XYZ0 );
+            uv1 = systemPtr->camera->camera2pixel ( XYZ1 );
+            uv2 = systemPtr->camera->camera2pixel ( XYZ2 );
+            uv3 = systemPtr->camera->camera2pixel ( XYZ3 );
+            Mat img0,img3,img1,img2;//
+            cvtColor ( dataPrevious.leftImage,img0,CV_GRAY2RGB );
+            cvtColor ( dataPrevious.rightImage,img3,CV_GRAY2RGB );
+            cvtColor ( dataCurrent.leftImage,img1,CV_GRAY2RGB );
+            cvtColor ( dataCurrent.rightImage,img2,CV_GRAY2RGB );
 
 
-        cv::circle ( img0,pl,rcircle,color0 );
-        cv::circle ( img3,pr,rcircle,color0 );
-        cv::circle ( img1,plc,rcircle,color0 );
-        cv::circle ( img2,prc,rcircle,color0 );
+            cv::Scalar color0 ( 200,0,0 );
+            cv::Scalar color1 ( 0,200,0 );
+            int rcircle = 2;
+            cv::Point pl ( matches[i].point[0].u,matches[i].point[0].v ); //
+            cv::Point pr ( matches[i].point[3].u,matches[i].point[3].v );
+            cv::Point plc ( matches[i].point[1].u,matches[i].point[1].v );
+            cv::Point prc ( matches[i].point[2].u,matches[i].point[2].v );
 
-        cv::circle ( img0,cv::Point ( uv0 ( 0 ),uv0 ( 1 ) ),rcircle,color1 );
-        cv::circle ( img3,cv::Point ( uv3 ( 0 ),uv3 ( 1 ) ),rcircle,color1 );
-        cv::circle ( img1,cv::Point ( uv1 ( 0 ),uv1 ( 1 ) ),rcircle,color1 );
-        cv::circle ( img2,cv::Point ( uv2 ( 0 ),uv2 ( 1 ) ),rcircle,color1 );
 
-		cv::imshow ( "img0",img0 );
-		cv::imshow ( "img3",img3 );
-		cv::imshow ( "img1",img1 );
-		cv::imshow ( "img2",img2 );
-        cvWaitKey ( 0 );
-        ///////////////////////////////////////////////
-    }*/
+            cv::circle ( img0,pl,rcircle,color0 );
+            cv::circle ( img3,pr,rcircle,color0 );
+            cv::circle ( img1,plc,rcircle,color0 );
+            cv::circle ( img2,prc,rcircle,color0 );
+
+            cv::circle ( img0,cv::Point ( uv0 ( 0 ),uv0 ( 1 ) ),rcircle,color1 );
+            cv::circle ( img3,cv::Point ( uv3 ( 0 ),uv3 ( 1 ) ),rcircle,color1 );
+            cv::circle ( img1,cv::Point ( uv1 ( 0 ),uv1 ( 1 ) ),rcircle,color1 );
+            cv::circle ( img2,cv::Point ( uv2 ( 0 ),uv2 ( 1 ) ),rcircle,color1 );
+
+    		cv::imshow ( "img0",img0 );
+    		cv::imshow ( "img3",img3 );
+    		cv::imshow ( "img1",img1 );
+    		cv::imshow ( "img2",img2 );
+            cvWaitKey ( 0 );
+            ///////////////////////////////////////////////
+        }*/
 
 
 
@@ -811,7 +824,7 @@ int FeaturePointBox::Match ( Point *&ppoint1,Point *&ppoint2, vector< Point > &p
             int SAD = vMinus.lpNorm<1>();
             if ( SAD<SADmin ) {
                 SADmin = SAD;
-                ppoint2 = &(points2[i]);
+                ppoint2 = & ( points2[i] );
             }
         }
     }
@@ -946,7 +959,7 @@ void FeaturePointBox::NonMaximumSuppression ( int16_t* I_f1,int16_t*I_f2,vector<
     }
 }
 
-void FeaturePointBox::CalcuDescriptors ( int16_t* sobelVer,int16_t* sobleHor,vector< Point >& points )
+void FeaturePointBox::CalcuDescriptors ( int16_t* sobelVer,int16_t* sobelHor,vector< Point >& points )
 {
     int32_t width  = systemPtr->params.width;
     int32_t height = systemPtr->params.height;
@@ -955,37 +968,39 @@ void FeaturePointBox::CalcuDescriptors ( int16_t* sobelVer,int16_t* sobleHor,vec
     int addr;
     for ( int i = 0; i<points.size(); i++ ) {
         points[i].id = i;
+        points[i].sobelV = sobelVer;
+        points[i].sobelH = sobelHor;
         VecDescriptor tempForMatch ;
         int u = int ( points[i].u );
         int v = int ( points[i].v );
         addr     = getAddressOffsetImage ( u,v,bpl );
 //ComputeDiscriptors for matching
-        tempForMatch[0]=abs ( * ( sobelVer+addr-1*bpl-3 ) ) +abs ( * ( sobleHor+addr-1*bpl-3 ) );
-        tempForMatch[1]=abs ( * ( sobelVer+addr-1*bpl-1 ) ) +abs ( * ( sobleHor+addr-1*bpl-1 ) );
-        tempForMatch[2]=abs ( * ( sobelVer+addr-1*bpl+1 ) ) +abs ( * ( sobleHor+addr-1*bpl+1 ) );
-        tempForMatch[3]=abs ( * ( sobelVer+addr-1*bpl+3 ) ) +abs ( * ( sobleHor+addr-1*bpl+3 ) );
-        tempForMatch[4]=abs ( * ( sobelVer+addr+1*bpl-3 ) ) +abs ( * ( sobleHor+addr+1*bpl-3 ) );
-        tempForMatch[5]=abs ( * ( sobelVer+addr+1*bpl-1 ) ) +abs ( * ( sobleHor+addr+1*bpl-1 ) );
-        tempForMatch[6]=abs ( * ( sobelVer+addr+1*bpl+1 ) ) +abs ( * ( sobleHor+addr+1*bpl+1 ) );
-        tempForMatch[7]=abs ( * ( sobelVer+addr+1*bpl+3 ) ) +abs ( * ( sobleHor+addr+1*bpl+3 ) );
+        tempForMatch[0]=abs ( * ( sobelVer+addr-1*bpl-3 ) ) +abs ( * ( sobelHor+addr-1*bpl-3 ) );
+        tempForMatch[1]=abs ( * ( sobelVer+addr-1*bpl-1 ) ) +abs ( * ( sobelHor+addr-1*bpl-1 ) );
+        tempForMatch[2]=abs ( * ( sobelVer+addr-1*bpl+1 ) ) +abs ( * ( sobelHor+addr-1*bpl+1 ) );
+        tempForMatch[3]=abs ( * ( sobelVer+addr-1*bpl+3 ) ) +abs ( * ( sobelHor+addr-1*bpl+3 ) );
+        tempForMatch[4]=abs ( * ( sobelVer+addr+1*bpl-3 ) ) +abs ( * ( sobelHor+addr+1*bpl-3 ) );
+        tempForMatch[5]=abs ( * ( sobelVer+addr+1*bpl-1 ) ) +abs ( * ( sobelHor+addr+1*bpl-1 ) );
+        tempForMatch[6]=abs ( * ( sobelVer+addr+1*bpl+1 ) ) +abs ( * ( sobelHor+addr+1*bpl+1 ) );
+        tempForMatch[7]=abs ( * ( sobelVer+addr+1*bpl+3 ) ) +abs ( * ( sobelHor+addr+1*bpl+3 ) );
 
-        tempForMatch[8]=abs ( * ( sobelVer+addr-3*bpl-5 ) ) +abs ( * ( sobleHor+addr-3*bpl-5 ) );
-        tempForMatch[9]=abs ( * ( sobelVer+addr-3*bpl-3 ) ) +abs ( * ( sobleHor+addr-3*bpl-3 ) );
-        tempForMatch[10]=abs ( * ( sobelVer+addr-3*bpl-1 ) ) +abs ( * ( sobleHor+addr-3*bpl-1 ) );
-        tempForMatch[11]=abs ( * ( sobelVer+addr-3*bpl+1 ) ) +abs ( * ( sobleHor+addr-3*bpl+1 ) );
-        tempForMatch[12]=abs ( * ( sobelVer+addr-3*bpl+3 ) ) +abs ( * ( sobleHor+addr-3*bpl+3 ) );
-        tempForMatch[13]=abs ( * ( sobelVer+addr-3*bpl+5 ) ) +abs ( * ( sobleHor+addr-3*bpl+5 ) );
-        tempForMatch[14]=abs ( * ( sobelVer+addr+3*bpl-5 ) ) +abs ( * ( sobleHor+addr+3*bpl-5 ) );
-        tempForMatch[15]=abs ( * ( sobelVer+addr+3*bpl-3 ) ) +abs ( * ( sobleHor+addr+3*bpl-3 ) );
-        tempForMatch[16]=abs ( * ( sobelVer+addr+3*bpl-1 ) ) +abs ( * ( sobleHor+addr+3*bpl-1 ) );
-        tempForMatch[17]=abs ( * ( sobelVer+addr+3*bpl+1 ) ) +abs ( * ( sobleHor+addr+3*bpl+1 ) );
-        tempForMatch[18]=abs ( * ( sobelVer+addr+3*bpl+3 ) ) +abs ( * ( sobleHor+addr+3*bpl+3 ) );
-        tempForMatch[19]=abs ( * ( sobelVer+addr+3*bpl+5 ) ) +abs ( * ( sobleHor+addr+3*bpl+5 ) );
+        tempForMatch[8]=abs ( * ( sobelVer+addr-3*bpl-5 ) ) +abs ( * ( sobelHor+addr-3*bpl-5 ) );
+        tempForMatch[9]=abs ( * ( sobelVer+addr-3*bpl-3 ) ) +abs ( * ( sobelHor+addr-3*bpl-3 ) );
+        tempForMatch[10]=abs ( * ( sobelVer+addr-3*bpl-1 ) ) +abs ( * ( sobelHor+addr-3*bpl-1 ) );
+        tempForMatch[11]=abs ( * ( sobelVer+addr-3*bpl+1 ) ) +abs ( * ( sobelHor+addr-3*bpl+1 ) );
+        tempForMatch[12]=abs ( * ( sobelVer+addr-3*bpl+3 ) ) +abs ( * ( sobelHor+addr-3*bpl+3 ) );
+        tempForMatch[13]=abs ( * ( sobelVer+addr-3*bpl+5 ) ) +abs ( * ( sobelHor+addr-3*bpl+5 ) );
+        tempForMatch[14]=abs ( * ( sobelVer+addr+3*bpl-5 ) ) +abs ( * ( sobelHor+addr+3*bpl-5 ) );
+        tempForMatch[15]=abs ( * ( sobelVer+addr+3*bpl-3 ) ) +abs ( * ( sobelHor+addr+3*bpl-3 ) );
+        tempForMatch[16]=abs ( * ( sobelVer+addr+3*bpl-1 ) ) +abs ( * ( sobelHor+addr+3*bpl-1 ) );
+        tempForMatch[17]=abs ( * ( sobelVer+addr+3*bpl+1 ) ) +abs ( * ( sobelHor+addr+3*bpl+1 ) );
+        tempForMatch[18]=abs ( * ( sobelVer+addr+3*bpl+3 ) ) +abs ( * ( sobelHor+addr+3*bpl+3 ) );
+        tempForMatch[19]=abs ( * ( sobelVer+addr+3*bpl+5 ) ) +abs ( * ( sobelHor+addr+3*bpl+5 ) );
 
-        tempForMatch[20]=abs ( * ( sobelVer+addr-5*bpl-1 ) ) +abs ( * ( sobleHor+addr-5*bpl-1 ) );
-        tempForMatch[21]=abs ( * ( sobelVer+addr-5*bpl+1 ) ) +abs ( * ( sobleHor+addr-5*bpl+1 ) );
-        tempForMatch[22]=abs ( * ( sobelVer+addr+5*bpl-1 ) ) +abs ( * ( sobleHor+addr+5*bpl-1 ) );
-        tempForMatch[23]=abs ( * ( sobelVer+addr+5*bpl+1 ) ) +abs ( * ( sobleHor+addr+5*bpl+1 ) );
+        tempForMatch[20]=abs ( * ( sobelVer+addr-5*bpl-1 ) ) +abs ( * ( sobelHor+addr-5*bpl-1 ) );
+        tempForMatch[21]=abs ( * ( sobelVer+addr-5*bpl+1 ) ) +abs ( * ( sobelHor+addr-5*bpl+1 ) );
+        tempForMatch[22]=abs ( * ( sobelVer+addr+5*bpl-1 ) ) +abs ( * ( sobelHor+addr+5*bpl-1 ) );
+        tempForMatch[23]=abs ( * ( sobelVer+addr+5*bpl+1 ) ) +abs ( * ( sobelHor+addr+5*bpl+1 ) );
 
         tempForMatch = tempForMatch/16;
         points[i].descriptor = tempForMatch;
@@ -1082,10 +1097,10 @@ bool FeaturePointBox::ExtractFPointsFromImage ( Mat &leftImage, Mat &rigtImage )
     int16_t* pRigtBlob = ( int16_t* ) dataCurrent.rightBlob.data;
     int16_t* pRigtCorner = ( int16_t* ) dataCurrent.rightCorner.data;
 
-    int16_t* pLeftSobleVer = ( int16_t* ) dataCurrent.leftSobelVer.data;
-    int16_t* pLeftSobleHor = ( int16_t* ) dataCurrent.leftSobelHor.data;
-    int16_t* pRightSobleVer = ( int16_t* ) dataCurrent.rightSobelVer.data;
-    int16_t* pRightSobleHor = ( int16_t* ) dataCurrent.RightSobelHor.data;
+    int16_t* pLeftSobleV = ( int16_t* ) dataCurrent.leftSobelVer.data;
+    int16_t* pLeftSobleH = ( int16_t* ) dataCurrent.leftSobelHor.data;
+    int16_t* pRightSobleV = ( int16_t* ) dataCurrent.rightSobelVer.data;
+    int16_t* pRightSobleH = ( int16_t* ) dataCurrent.RightSobelHor.data;
 
 
     //计算nms，左图，右图，fast，dense
@@ -1112,12 +1127,12 @@ bool FeaturePointBox::ExtractFPointsFromImage ( Mat &leftImage, Mat &rigtImage )
 
     //computediscriptors
     //左图
-    CalcuDescriptors ( pLeftSobleVer,pLeftSobleHor,dataCurrent.pointsLeftLess );
-    CalcuDescriptors ( pLeftSobleVer,pLeftSobleHor,dataCurrent.pointsLeft );
+    CalcuDescriptors ( pLeftSobleV,pLeftSobleH,dataCurrent.pointsLeftLess );
+    CalcuDescriptors ( pLeftSobleV,pLeftSobleH,dataCurrent.pointsLeft );
     //右图
 
-    CalcuDescriptors ( pRightSobleVer,pRightSobleHor,dataCurrent.pointsRightLess );
-    CalcuDescriptors ( pRightSobleVer,pRightSobleHor,dataCurrent.pointsRight );
+    CalcuDescriptors ( pRightSobleV,pRightSobleH,dataCurrent.pointsRightLess );
+    CalcuDescriptors ( pRightSobleV,pRightSobleH,dataCurrent.pointsRight );
     return true;
 
 }
