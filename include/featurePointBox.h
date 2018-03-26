@@ -145,7 +145,7 @@ private:
     int Match ( Point *&point1,Point *&point2, vector< Point > &points2,vector<Range> &range );
 	//type: 0 is horizontal, 1 is vertal;
 	void RefineToSubPixel(vector<MatchFeatures> &matches);
-	void CalcuFitPatch(Point* p0,Point* pi,vector<double> &fitPatch);
+	void CalcuFitPatch(Point* p0,Point* pi,Matrix<double,13,1> &fitPatc);
 	void UpdateRanges(vector<MatchFeatures> &matches);
 	double CacuReprojectError(MatchFeatures match,SE3 transform);
 	void CacuTransfer5pRansac(vector<MatchFeatures> &matches);
